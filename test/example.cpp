@@ -1,5 +1,5 @@
 #include "stdio.h"
-int main()
+std::int32_t main()
 {
 	printf("hello world!");
 }
