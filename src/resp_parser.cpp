@@ -7,7 +7,11 @@ static const char arrayReply = '*';
 
 size_t find_CRLF_index(char *buf, size_t len, size_t index)
 {
-    char *p = std::find(buf, buf + len, '\r');
+    if (index > len)
+    {
+        return 0;
+    }
+    char *p = std::find(buf + index, buf + len, '\r');
     if (*(p + 1) == '\n')
     {
         return (unsigned long)p - (unsigned long)buf;
@@ -60,7 +64,6 @@ std::pair<size_t, ParseResult> rasp_parser::process_integer(char *buf, size_t le
     }
 }
 
-
 std::pair<size_t, ParseResult> rasp_parser::process_bulk(char *buf, size_t len, size_t index)
 {
     __LOG(debug, "now process bulk");
@@ -93,12 +96,13 @@ std::pair<size_t, ParseResult> rasp_parser::process_bulk(char *buf, size_t len, 
         else if (bulk_len >= 0)
         {
             std::size_t found2 = find_CRLF_index(buf, len, found + 2);
-            if (found2 != std::string::npos)
+            if (found2)
             {
                 return std::make_pair(found2 - index + 2, Completed);
             }
             else
             {
+                __LOG(debug, "did not find CRLF !!");
                 return std::make_pair(0, Incompleted);
             }
         }
@@ -152,7 +156,7 @@ std::pair<size_t, ParseResult> rasp_parser::process_array(char *buf, size_t len,
         {
             for (int i = 0; i < array_size; i++)
             {
-                auto result = process_resp(buf, nullptr, _sub_index);
+                auto result = process_resp(buf, len, nullptr, _sub_index);
                 if (std::get<1>(result) != Completed)
                 {
                     return std::make_pair(0, Error);
@@ -175,7 +179,7 @@ std::pair<size_t, ParseResult> rasp_parser::process_array(char *buf, size_t len,
 std::pair<size_t, ParseResult> rasp_parser::process_resp(char *buf, size_t len, std::function<void(char *, size_t)> on_resp_cb, size_t index)
 {
     size_t processed_buf = index;
-    while (buf.size() > processed_buf)
+    while (len > processed_buf)
     {
         __LOG(debug, "now process " << std::string((char *)&buf[processed_buf], 1));
         std::pair<size_t, ParseResult> result;
@@ -183,27 +187,27 @@ std::pair<size_t, ParseResult> rasp_parser::process_resp(char *buf, size_t len, 
         {
         case stringReply:
         {
-            result = process_string(buf, processed_buf);
+            result = process_string(buf, len, processed_buf);
         }
         break;
         case errorReply:
         {
-            result = process_error(buf, processed_buf);
+            result = process_error(buf, len, processed_buf);
         }
         break;
         case integerReply:
         {
-            result = process_integer(buf, processed_buf);
+            result = process_integer(buf, len, processed_buf);
         }
         break;
         case bulkReply:
         {
-            result = process_bulk(buf, processed_buf);
+            result = process_bulk(buf, len, processed_buf);
         }
         break;
         case arrayReply:
         {
-            result = process_array(buf, processed_buf);
+            result = process_array(buf, len, processed_buf);
         }
         break;
         default:
@@ -218,7 +222,7 @@ std::pair<size_t, ParseResult> rasp_parser::process_resp(char *buf, size_t len, 
         {
             if (on_resp_cb)
             {
-                on_resp_cb(((char *)buf.data() + processed_buf), std::get<0>(result));
+                on_resp_cb((buf + processed_buf), std::get<0>(result));
             }
             processed_buf += std::get<0>(result);
         }
