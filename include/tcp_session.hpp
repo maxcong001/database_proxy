@@ -160,7 +160,7 @@ extern class TcpSession : public std::enable_shared_from_this<TcpSession>
 	BufferEventSPtr _bev_sptr;
 	std::atomic<bool> _isClosing;
 	redisReader *_redis_reader;
-	static std::atomic<std::uint32_t> _sIdGenerater;
+	std::uint32_t _sIdGenerater;
 };
 typedef std::shared_ptr<TcpSession> TcpSessionSPtr;
 void hiredisCallback(redisAsyncContext *c, void *r, void *privdata);

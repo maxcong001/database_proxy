@@ -1,6 +1,6 @@
 std::thread_local std::shared_ptr<loop_thread> loop_thread::_loop_thread_sptr = nullptr;
 std::thread_local std::map<evutil_socket_t, std::shared_ptr<TcpSession>> loop_thread::_fd_to_session_map;
-std::thread_local std::vector<ContextSptr> loop_thread::_context_sptr_vector;
+std::thread_local std::vector<std::shared_ptr<TcpClient>> loop_thread::_connection_sptr_vector;
 
 void connectCallback(const redisAsyncContext *c, int status)
 {
@@ -96,19 +96,15 @@ void loop_thread::process_msg(uint64_t num)
             }
             if (_conn_info.type == CONN_TYPE::IP_V4 || _conn_info.type == CONN_TYPE::IP_V6)
             {
-                ContextSptr _context_sptr(redisAsyncConnectBind(_conn_info.IP.c_str(), _conn_info.port, _conn_info.source_IP));
-                redisLibeventAttach(_context_sptr.get(), get_loop()->ev());
-                redisAsyncSetConnectCallback(_context_sptr.get(), connectCallback);
-                redisAsyncSetDisconnectCallback(_context_sptr.get(), disconnectCallback);
-                loop_thread::_context_sptr_vector.push_back(_context_sptr);
+                std::shared_ptr<TcpClient> _conn_sptr(get_loop());
+                _conn_sptr->connect(_conn_info);
+                loop_thread::_connection_sptr_vector.push_back(_conn_sptr);
             }
             else if (_conn_info.type == CONN_TYPE::UNIX_SOCKET)
             {
-                ContextSptr _context_sptr(redisAsyncConnectUnix(_conn_info.path.c_str()));
-                redisLibeventAttach(_context_sptr.get(), get_loop()->ev());
-                redisAsyncSetConnectCallback(_context_sptr.get(), connectCallback);
-                redisAsyncSetDisconnectCallback(_context_sptr.get(), disconnectCallback);
-                loop_thread::_context_sptr_vector.push_back(_context_sptr);
+                std::shared_ptr<TcpClient> _conn_sptr(get_loop());
+                _conn_sptr->connect(_conn_info);
+                loop_thread::_connection_sptr_vector.push_back(_conn_sptr);
             }
             else
             {
@@ -130,10 +126,12 @@ void loop_thread::process_msg(uint64_t num)
         _tmp_task_queue.pop();
     }
 }
-void hiredisCallback(redisAsyncContext *c, void *r, void *privdata) {
+void hiredisCallback(redisAsyncContext *c, void *r, void *privdata)
+{
     redisReply *reply = r;
-    if (reply == NULL) return;
-    printf("argv[%s]: %s\n", (char*)privdata, reply->str);
+    if (reply == NULL)
+        return;
+    printf("argv[%s]: %s\n", (char *)privdata, reply->str);
 
     /* Disconnect after receiving the reply to GET */
     redisAsyncDisconnect(c);

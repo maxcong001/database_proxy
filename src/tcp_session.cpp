@@ -10,51 +10,29 @@ void hiredisCallback(redisAsyncContext *c, void *r, void *privdata)
     auto session = loop_thread::_fd_to_session_map[(evutil_socket_t)((unsigned long)privdata)];
     session->send(buffer, len);
 }
-long int TcpSession::bufToLong(const char *str, size_t size)
-{
-    long int value = 0;
-    bool sign = false;
 
-    if (str == nullptr || size == 0)
-    {
-        return 0;
-    }
-
-    if (*str == '-')
-    {
-        sign = true;
-        ++str;
-        --size;
-
-        if (size == 0)
-        {
-            return 0;
-        }
-    }
-
-    for (const char *end = str + size; str != end; ++str)
-    {
-        char c = *str;
-
-        // char must be valid, already checked in the parser
-        assert(c >= '0' && c <= '9');
-
-        value = value * 10;
-        value += c - '0';
-    }
-
-    return sign ? -value : value;
-}
 
 void TcpSession::onRead()
 {
-
     uint32_t length = this->getInputBufferLength();
     const uint8_t *buf = this->viewInputBuffer(length);
-
     auto ret = rasp_parser::process_resp(buf, length, [this](char *buf, size_t buf_length) {
-        auto context_sptr = loop_thread::_context_sptr_vector[_sIdGenerater++];
-        redisAsyncFormattedCommand(context_sptr.get(), hiredisCallback, (void *)(unsigned long(_fd)), buf, buf_length);
+        std::shared_ptr<TcpClient> _conn_sptr = nullptr;
+        unsigned short retry_time = loop_thread::_connection_sptr_vector.size();
+        while(!_conn_sptr = loop_thread::_connection_sptr_vector[_sIdGenerater++ / loop_thread::_connection_sptr_vector.size()] || !_conn_sptr->isConnected())
+        {
+            retry_time--;
+            if(!retry_time)
+            {
+                __LOG(warn, "there is no connection!");
+                return ;
+            }
+        }
+        // now got a connected connection
+        if(!_conn_sptr->send(buf, buf_length))
+        {
+            __LOG(error, "send return fail");
+        }
     });
 
     if (std::get<0>(ret) > 0 && !this->drainInputBuffer(std::get<0>(ret)))

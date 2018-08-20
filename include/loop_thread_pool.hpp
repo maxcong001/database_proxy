@@ -64,6 +64,14 @@ class loop_thread_pool
         }
         return true;
     }
+    bool send_to_all(TASK_MSG msg)
+    {
+        for (auto it : _loop_threads)
+        {
+            it->send2loop_thread(msg);
+        }
+        return true;
+    }
     std::shared_ptr<loop_thread> get_loop()
     {
         _select_index++;
