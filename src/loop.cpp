@@ -1,13 +1,10 @@
 #include "loop.hpp"
-thread_local Loop *curThreadLoop;
-
-std::mutex Loop::_sMutex;
-std::map<uint32_t, Loop *> Loop::_sLoops;
-uint32_t Loop::_sIdGenerater = 0;
+//thread_local std::shared_ptr<Loop> curThreadLoop_sptr;
+std::atomic<std::uint32_t> Loop::_sIdGenerater;
 
 Loop::Loop() : _id(0),
-               _base(event_base_new()),
-               _thread(nullptr),
+               _base_sptr(event_base_new()),
+               _thread_sptr(nullptr),
                _status(StatusInit)
 {
 }
@@ -21,14 +18,14 @@ bool Loop::init()
     _id = _sIdGenerater++;
     evthread_use_pthreads();
 
-    if (!_base)
+    if (!_base_sptr)
     {
         // note!!!! if you catch this exception
         // please remember call the distructure function
         // !!!!!!! this is important
         throw std::logic_error(CREATE_EVENT_FAIL);
     }
-    evthread_make_base_notifiable(_base.get());
+    evthread_make_base_notifiable(_base_sptr.get());
     return true;
 }
 bool Loop::start(bool newThread)
@@ -47,7 +44,7 @@ bool Loop::start(bool newThread)
 
     if (newThread)
     {
-        _thread = std::make_shared<std::thread>(std::bind(&Loop::_run, this));
+        _thread_sptr = std::make_shared<std::thread>(std::bind(&Loop::_run, this));
     }
     else
     {
@@ -59,9 +56,9 @@ bool Loop::start(bool newThread)
 
 void Loop::wait()
 {
-    if (_thread && StatusFinished != _status)
+    if (_thread_sptr && StatusFinished != _status)
     {
-        _thread->join();
+        _thread_sptr->join();
     }
 }
 
@@ -72,7 +69,7 @@ void Loop::stop(bool waiting)
         return;
     }
 
-    waiting ? event_base_loopexit(_base.get(), NULL) : event_base_loopbreak(_base.get());
+    waiting ? event_base_loopexit(_base_sptr.get(), NULL) : event_base_loopbreak(_base_sptr.get());
     onAfterStop();
 }
 
@@ -80,7 +77,7 @@ void Loop::_run()
 {
     _status = StatusRunning;
     onBeforeLoop();
-    event_base_loop(_base.get(), 0);
+    event_base_loop(_base_sptr.get(), 0);
     onAfterLoop();
     _status = StatusFinished;
 }

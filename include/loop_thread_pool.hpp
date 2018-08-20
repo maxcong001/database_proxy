@@ -4,7 +4,7 @@
 
 #include <thread>
 #include <chrono>
-
+#include "util.hpp"
 class loop_thread_pool
 {
   public:
@@ -53,7 +53,7 @@ class loop_thread_pool
         for (auto it : _loop_threads)
         {
             TASK_MSG msg;
-            msg.type = EXIT_LOOP;
+            msg.type = TASK_MSG_TYPE::EXIT_LOOP;
             msg.body = it;
 
             it->send2loop_thread(msg);

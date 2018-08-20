@@ -1,6 +1,8 @@
-std::thread_local std::shared_ptr<loop_thread> loop_thread::_loop_thread_sptr = nullptr;
-std::thread_local std::map<evutil_socket_t, std::shared_ptr<TcpSession>> loop_thread::_fd_to_session_map;
-std::thread_local std::vector<std::shared_ptr<TcpClient>> loop_thread::_connection_sptr_vector;
+#include "loop_thread.hpp"
+
+std::shared_ptr<loop_thread> loop_thread::_loop_thread_sptr = nullptr;
+thread_local std::map<evutil_socket_t, std::shared_ptr<TcpSession>> loop_thread::_fd_to_session_map;
+thread_local std::vector<std::shared_ptr<TcpClient>> loop_thread::_connection_sptr_vector;
 
 void connectCallback(const redisAsyncContext *c, int status)
 {
@@ -42,7 +44,7 @@ void loop_thread::process_msg(uint64_t num)
 
         switch (tmp.type)
         {
-        case NEW_SESSION:
+        case TASK_MSG_TYPE::NEW_SESSION:
         {
             evutil_socket_t socket_fd;
             try
@@ -60,7 +62,25 @@ void loop_thread::process_msg(uint64_t num)
             loop_thread::_fd_to_session_map[socket_fd] = _session_sptr;
         }
         break;
-        case DEL_SESSION:
+        case TASK_MSG_TYPE::NEW_LISTENER:
+        {
+            CONN_INFO conn;
+            try
+            {
+                conn = TASK_ANY_CAST<CONN_INFO>(tmp.body);
+            }
+            catch (std::exception &e)
+            {
+                _tmp_task_queue.pop();
+                __LOG(error, "!!!!!!!!!!!!exception happend when trying to cast message, info :" << e.what());
+                continue;
+            }
+            // just add it, will add some more code to del function
+            auto listener_ptr = new TCPListener(_loop_sptr->get_base_sptr());
+            listener_ptr->listen(conn.IP, conn.type);
+        }
+        break;
+        case TASK_MSG_TYPE::DEL_SESSION:
         {
             evutil_socket_t socket_fd;
             try
@@ -76,12 +96,12 @@ void loop_thread::process_msg(uint64_t num)
             loop_thread::_fd_to_session_map.erase(socket_fd);
         }
         break;
-        case EXIT_LOOP:
+        case TASK_MSG_TYPE::EXIT_LOOP:
         {
             stop();
         }
         break;
-        case ADD_CONN:
+        case TASK_MSG_TYPE::ADD_CONN:
         {
             CONN_INFO _conn_info;
             try
@@ -114,7 +134,7 @@ void loop_thread::process_msg(uint64_t num)
             }
         }
         break;
-        case DEL_CONN:
+        case TASK_MSG_TYPE::DEL_CONN:
         {
             // del one connection
         }
@@ -125,14 +145,4 @@ void loop_thread::process_msg(uint64_t num)
         }
         _tmp_task_queue.pop();
     }
-}
-void hiredisCallback(redisAsyncContext *c, void *r, void *privdata)
-{
-    redisReply *reply = r;
-    if (reply == NULL)
-        return;
-    printf("argv[%s]: %s\n", (char *)privdata, reply->str);
-
-    /* Disconnect after receiving the reply to GET */
-    redisAsyncDisconnect(c);
 }

@@ -4,17 +4,15 @@
 std::int32_t main()
 {
     set_log_level(logger_iface::log_level::warn);
-    set_max_log_buff(10);
-    for (std::int32_t i = 0; i < 100; i++)
-    {
-        __LOG(error, "hello logger!"
-                         << "this is error log");
-        __LOG(warn, "hello logger!"
-                        << "this is warn log");
-        __LOG(info, "hello logger!"
-                        << "this is info log");
-        __LOG(debug, "hello logger!"
-                         << "this is debug log");
-    }
-    dump_log();
+    TASK_MSG msg;
+    msg.type = TASK_MSG_TYPE::NEW_LISTENER;
+
+    CONN_INFO conn;
+    conn.type = IP_v4;
+    conn.IP = "127.0.0.1" conn.port = 6379;
+
+    msg.body = conn;
+    loop_thread_pool::instance()->get_loop()->send2loop_thread(msg);
+
+    getchar();
 }

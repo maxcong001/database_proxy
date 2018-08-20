@@ -1,9 +1,6 @@
 #include "tcp_socket.hpp"
 #include <event2/buffer.h>
 
-#define INPUT_BUFFER bufferevent_get_input(_bev_sptr.get())
-#define OUTPUT_BUFFER bufferevent_get_output(_bev_sptr.get())
-
 TcpSocket::TcpSocket() : _bev_sptr(NULL),
                          _isClosing(false)
 {
@@ -11,7 +8,6 @@ TcpSocket::TcpSocket() : _bev_sptr(NULL),
 
 TcpSocket::~TcpSocket()
 {
-
 }
 
 SocketFd TcpSocket::get_socket() const
@@ -98,5 +94,3 @@ void TcpSocket::closeImpl()
     bufferevent_disable(_bev.get(), EV_WRITE);
     shutdown(get_socket(), 2);
 }
-
-

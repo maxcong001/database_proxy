@@ -1,11 +1,12 @@
 #pragma once
-
+#include "util.hpp"
 class TCPListener
 {
   public:
     TCPListener() = delete;
-    TCPListener(event_base *evBase_in)
+    TCPListener(BaseSPtr base_sptr)
     {
+        _base_sptr = base_sptr;
     }
     bool init()
     {
@@ -34,7 +35,7 @@ class TCPListener
 
         serverAddr.sin_port = htons(port);
 
-        _eventListener.reset(evconnlistener_new_bind(_master->ev(),
+        _eventListener.reset(evconnlistener_new_bind(_base_sptr.get(),
                                                      listenEventCallback, this,
                                                      LEV_OPT_CLOSE_ON_FREE | LEV_OPT_REUSEABLE | LEV_OPT_THREADSAFE, -1,
                                                      (struct sockaddr *)&serverAddr, sizeof(serverAddr)));
@@ -47,6 +48,7 @@ class TCPListener
 
         evutil_make_socket_nonblocking(evconnlistener_get_fd(_eventListener.get()));
         evconnlistener_set_error_cb(_eventListener.get(), listenErrorCallback);
+        return true;
     }
     void listenErrorCallback(evconnlistener *, void *)
     {
@@ -59,11 +61,11 @@ class TCPListener
         in this callback function, we will dispatch fd to different worker thread.
         */
 
-
         TASK_MSG msg;
-        msg.type = ADD_SESSION;
+        msg.type = TASK_MSG_TYPE::NEW_SESSION;
         msg.body = fd;
         loop_thread_pool::instance()->get_loop()->send2loop_thread(msg);
     }
     ListenerSPtr _eventListener;
+    BaseSPtr _base_sptr;
 };

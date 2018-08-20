@@ -1,6 +1,6 @@
 #pragma once
 #include <map>
-
+#include "util.hpp"
 /**
  * @brief on top of event_base
  * @details this class is thread safe, but event loop is sigle thread
@@ -9,77 +9,77 @@
 class Loop
 {
   public:
-    static const std::int32_t StatusInit = 0;
+	static const std::int32_t StatusInit = 0;
 
-    static const std::int32_t StatusRunning = 2;
+	static const std::int32_t StatusRunning = 2;
 
-    static const std::int32_t StatusFinished = 4;
+	static const std::int32_t StatusFinished = 4;
 
-    Loop();
-    virtual ~Loop();
+	Loop();
+	virtual ~Loop();
 
-    bool init();
+	bool init();
 
-    /** convert to event_base * pointer*/
-    inline operator event_base *() const
-    {
-        return _base.get();
-    };
+	/** convert to event_base * pointer*/
+	inline operator event_base *() const
+	{
+		return _base_sptr.get();
+	};
 
-    /** @brief get event_base * pointer*/
-    inline event_base *ev() const
-    {
-        return _base.get();
-    }
-    inline BaseSPtr get_base_sptr()
-    {
-      return _base;
-    }
+	/** @brief get event_base * pointer*/
+	inline event_base *ev() const
+	{
+		return _base_sptr.get();
+	}
+	inline BaseSPtr get_base_sptr()
+	{
+		return _base_sptr;
+	}
 
-    inline std::uint32_t id() const
-    {
-        return _id;
-    }
+	inline std::uint32_t id() const
+	{
+		return _id;
+	}
 
+	/** get status */
+	inline std::int32_t status() const
+	{
+		return _status;
+	}
 
-    /** get status */
-    inline std::int32_t status() const
-    {
-        return _status;
-    }
-
-    /**
+	/**
 	 * @brief start event loop
 	 * @details if this is called in the current thread. it will block current thread until the end of time loop
 	 * see onBeforeStart
 	 */
-    bool start(bool newThread = true);
+	bool start(bool newThread = true);
 
-    void wait();
+	void wait();
 
-    /** if run with new thread, will stop the new thread
+	/** if run with new thread, will stop the new thread
 	 * waiting: if call the active callback before exit
 	 */
-    void stop(bool waiting = true);
-
+	void stop(bool waiting = true);
+	static std::atomic<std::uint32_t> _sIdGenerater;
   protected:
-    virtual bool onBeforeStart();
+	virtual bool onBeforeStart();
 
-    virtual void onBeforeLoop();
+	virtual void onBeforeLoop();
 
-    virtual void onAfterLoop();
+	virtual void onAfterLoop();
 
-    virtual void onAfterStop();
-
-  private:
-    void _run();
+	virtual void onAfterStop();
 
   private:
-    std::uint32_t _id;
-    BaseSPtr _base;
-    std::shared_ptr<std::thread> _thread_sptr;
-    std::atomic<std::uint32_t> _status;
+	void _run();
 
   private:
-    static std::atomic<std::uint32_t> _sIdGenerater;
+	std::uint32_t _id;
+	BaseSPtr _base_sptr;
+	std::shared_ptr<std::thread> _thread_sptr;
+	std::atomic<std::uint32_t> _status;
+
+
+
+
 };

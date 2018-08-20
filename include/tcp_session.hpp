@@ -1,4 +1,9 @@
 #pragma once
+#include "util.hpp"
+
+#define INPUT_BUFFER bufferevent_get_input(_bev_sptr.get())
+#define OUTPUT_BUFFER bufferevent_get_output(_bev_sptr.get())
+
 extern class TcpSession : public std::enable_shared_from_this<TcpSession>
 {
   public:
@@ -6,7 +11,6 @@ extern class TcpSession : public std::enable_shared_from_this<TcpSession>
 	TcpSession(evutil_socket_t fd, BaseSPtr base_sptr) : _bev_sptr(bufferevent_socket_new(base_sptr.get(), fd, BEV_OPT_THREADSAFE | BEV_OPT_DEFER_CALLBACKS | BEV_OPT_CLOSE_ON_FREE)), _isClosing(false)
 	{
 		_fd = fd;
-		_redis_reader = redisReaderCreate();
 	}
 	~TcpSession()
 	{
@@ -15,7 +19,6 @@ extern class TcpSession : public std::enable_shared_from_this<TcpSession>
 			bufferevent_free(_bev_sptr.get());
 			_bev_sptr = nullptr;
 		}
-		redisReaderFree(_redis_reader);
 	}
 	bool init()
 	{
@@ -40,16 +43,16 @@ extern class TcpSession : public std::enable_shared_from_this<TcpSession>
 
 	bool send(const char *data, uint32_t size)
 	{
-		if ((!_bev) || _isClosing)
+		if (!_bev_sptr || _isClosing)
 		{
 			return false;
 		}
-		return (-1 != bufferevent_write(_bev, data, size));
+		return (-1 != bufferevent_write(_bev_sptr.get(), data, size));
 	}
 	/*
 	void close(bool waiting = true)
 	{
-		if (!_bev)
+		if (!_bev_sptr)
 		{
 			return;
 		}
@@ -66,7 +69,7 @@ extern class TcpSession : public std::enable_shared_from_this<TcpSession>
 	{
 		_isClosing = false;
 		clearInputBuffer();
-		bufferevent_disable(_bev, EV_WRITE);
+		bufferevent_disable(_bev_sptr, EV_WRITE);
 		shutdown(socket(), 2);
 	}
 	void checkClosing()
@@ -81,27 +84,26 @@ extern class TcpSession : public std::enable_shared_from_this<TcpSession>
 
 	uint32_t getInputBufferLength() const
 	{
-		return (NULL != _bev) ? evbuffer_get_length(INPUT_BUFFER) : 0;
+		return (!_bev_sptr) ? evbuffer_get_length(INPUT_BUFFER) : 0;
 	}
 	/** view input buffer */
 	const uint8_t *viewInputBuffer(uint32_t size) const
 	{
-		return (NULL != _bev) ? evbuffer_pullup(INPUT_BUFFER, size) : NULL;
+		return (!_bev_sptr) ? evbuffer_pullup(INPUT_BUFFER, size) : NULL;
 	}
 	/** read input buffer */
 	bool readInputBuffer(uint8_t *dest, uint32_t size)
 	{
-		return (NULL != _bev) ? (-1 != evbuffer_remove(INPUT_BUFFER, (void *)dest, size)) : false;
+		return (!_bev_sptr) ? (-1 != evbuffer_remove(INPUT_BUFFER, (void *)dest, size)) : false;
 	}
 	/** clear input buffer */
 	void clearInputBuffer()
 	{
-		if (NULL != _bev)
+		if (!_bev_sptr)
 		{
 			evbuffer_drain(INPUT_BUFFER, UINT32_MAX);
 		}
 	}
-
 
   protected:
 	/**
@@ -111,7 +113,6 @@ extern class TcpSession : public std::enable_shared_from_this<TcpSession>
 	 */
 	virtual void onRead();
 
-
 	enum ParseResult
 	{
 		Completed,
@@ -120,24 +121,7 @@ extern class TcpSession : public std::enable_shared_from_this<TcpSession>
 	};
 
   private:
-	void handleEvent(short events)
-	{
-		//bufferevent_disable(_bev_sptr.get(), EV_READ | EV_WRITE);
-		//evutil_closesocket(get_fd());
-		// should kill myself
-		TASK_MSG msg;
-		msg.type = DEL_SESSION;
-		msg.body = _fd;
-
-		if (loop_thread::_loop_thread_sptr)
-		{
-			loop_thread::_loop_thread_sptr->send2loop_thread(msg);
-		}
-		else
-		{
-			__LOG(error, "loop sptr is not valid!");
-		}
-	}
+	void handleEvent(short events);
 
 	static void readCallback(struct bufferevent *bev, void *data)
 	{
@@ -159,8 +143,6 @@ extern class TcpSession : public std::enable_shared_from_this<TcpSession>
 	evutil_socket_t _fd;
 	BufferEventSPtr _bev_sptr;
 	std::atomic<bool> _isClosing;
-	redisReader *_redis_reader;
 	std::uint32_t _sIdGenerater;
 };
 typedef std::shared_ptr<TcpSession> TcpSessionSPtr;
-void hiredisCallback(redisAsyncContext *c, void *r, void *privdata);
