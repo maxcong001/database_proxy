@@ -40,7 +40,7 @@ class TcpSocket
 	virtual ~TcpSocket();
 
 	/** get socket */
-	SocketFd get_socket() const;
+	evutil_socket_t get_socket() const;
 	/** get connection address */
 	void getAddr(struct sockaddr_in *dest, uint32_t size) const;
 
@@ -76,7 +76,7 @@ class TcpSocket
 	void closeImpl();
 
   protected:
-	BufferEventSPtr *_bev_sptr;
+	BufferEventSPtr _bev_sptr;
 
   private:
 	std::atomic<bool> _isClosing;

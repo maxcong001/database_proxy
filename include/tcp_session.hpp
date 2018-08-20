@@ -4,7 +4,7 @@
 #define INPUT_BUFFER bufferevent_get_input(_bev_sptr.get())
 #define OUTPUT_BUFFER bufferevent_get_output(_bev_sptr.get())
 
-extern class TcpSession : public std::enable_shared_from_this<TcpSession>
+class TcpSession : public std::enable_shared_from_this<TcpSession>
 {
   public:
 	TcpSession() = delete;

@@ -10,7 +10,7 @@ TcpSocket::~TcpSocket()
 {
 }
 
-SocketFd TcpSocket::get_socket() const
+evutil_socket_t TcpSocket::get_socket() const
 {
     return (_bev_sptr) ? SOCKET_FD_INVALID : bufferevent_getfd(_bev_sptr.get());
 }

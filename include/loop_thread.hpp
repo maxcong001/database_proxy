@@ -3,14 +3,13 @@
 #include <thread>
 #include <chrono>
 
-
-#include"loop.hpp"
+#include "loop.hpp"
 #include "eventfd_client.hpp"
 #include "eventfd_server.hpp"
 #include "tcp_session.hpp"
+
 class loop_thread : public std::enable_shared_from_this<loop_thread>
 {
-
   public:
     loop_thread() : _loop_sptr(nullptr)
     {
@@ -39,79 +38,7 @@ class loop_thread : public std::enable_shared_from_this<loop_thread>
     }
     void process_msg(uint64_t num);
 
-    bool init(bool new_thread)
-    {
-        _loop_sptr = std::make_shared<Loop>();
-        if (!_loop_sptr)
-        {
-            __LOG(error, "create loop return error!");
-            return false;
-        }
-        if (!_loop_sptr->init())
-        {
-            __LOG(error, "init loop return fail!");
-            return false;
-        }
-
-        _evfd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
-
-        if (_evfd <= 0)
-        {
-            __LOG(error, "!!!!!!!!create event fd fail!");
-            return false;
-        }
-        __LOG(debug, "init task with ID :" << _evfd);
-        // start eventfd server
-        event_base *_event_base = NULL;
-
-        _event_base = _loop_sptr->ev();
-        // check event base is ready, if not ready sleep 10ms
-        // at some rainy-day case, event base maybe NULL
-        if (!_event_base)
-        {
-            __LOG(warn, "event base is not ready!");
-            std::this_thread::sleep_for(std::chrono::milliseconds(10));
-            return false;
-        }
-
-        _event_client_sptr = std::make_shared<EVFDClient>(_evfd);
-        if (!_event_client_sptr)
-        {
-            __LOG(error, "eventfd client init fail!");
-            return false;
-        }
-
-        try
-        {
-            auto this_sptr = std::shared_from_this();
-            _event_server_sptr = std::make_shared<EventFdServer>(_loop_sptr->ev(), _evfd, [this_sptr](int fd, short event, void *args) {
-                uint64_t one;
-                auto keep_this_sptr = this_sptr;
-                int ret = read(fd, &one, sizeof one);
-                if (ret != sizeof one)
-                {
-                    __LOG(warn, "read return : " << ret);
-                    return;
-                }
-                if (keep_this_sptr)
-                {
-                    keep_this_sptr->process_msg(one);
-                }
-                else
-                {
-                    __LOG(error, "this has been deleted");
-                }
-            },
-                                                                 this);
-        }
-        catch (std::exception &e)
-        {
-            __LOG(error, "!!!!!!!!!!!!exception happend when trying to create event fd server, info :" << e.what());
-            return false;
-        }
-        _loop_sptr->start(new_thread);
-        return true;
-    }
+    bool init(bool new_thread);
     // thread safe
     bool send2loop_thread(TASK_MSG msg)
     {
@@ -139,5 +66,4 @@ class loop_thread : public std::enable_shared_from_this<loop_thread>
 
     static thread_local std::shared_ptr<loop_thread> _loop_thread_sptr;
     static thread_local std::map<evutil_socket_t, std::shared_ptr<TcpSession>> _fd_to_session_map;
-
 };

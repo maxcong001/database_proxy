@@ -24,7 +24,8 @@
  */
 
 #pragma once
-#include "tcpSocket.h"
+
+#include "tcp_socket.hpp"
 #include <sys/socket.h>
 #include <sys/un.h>
 
@@ -42,10 +43,10 @@ class TcpClient : public TcpSocket
 	bool init()
 	{
 		__LOG(debug, "[TcpClient::init], this is : " << (void *)this);
-		if (this->_bev_sptr_sptr)
+		if (this->_bev_sptr)
 		{
-			this->_bev_sptr_sptr.reset();
-			this->_bev_sptr_sptr = nullptr;
+			this->_bev_sptr.reset();
+			this->_bev_sptr = nullptr;
 		}
 		_dscp = 0;
 		return true;
@@ -62,6 +63,7 @@ class TcpClient : public TcpSocket
 			this->_bev_sptr.reset();
 			this->_bev_sptr = nullptr;
 		}
+		return true;
 	}
 
 	//bool connect(const char *ip, uint16_t port);
@@ -70,7 +72,7 @@ class TcpClient : public TcpSocket
 		// note: note no cross check for source IP
 		set_source_addr(get_conn_info().get_source_ip(), fd);
 
-		this->_bev_sptr_sptr.reset(bufferevent_socket_new(_loop->ev(), fd,
+		this->_bev_sptr.reset(bufferevent_socket_new(_loop->ev(), fd,
 														  BEV_OPT_CLOSE_ON_FREE | BEV_OPT_THREADSAFE | BEV_OPT_DEFER_CALLBACKS));
 		if (!this->_bev_sptr)
 		{
@@ -290,19 +292,25 @@ class TcpClient : public TcpSocket
 
 		ret = getsockname(fd, (struct sockaddr *)&ss, &sslen);
 		if (ret != 0)
+		{
 			return ret;
+		}
 
 		unsigned char tos = (unsigned char)((dscp & 0x3f) << 2);
 
 		switch (((struct sockaddr *)&ss)->sa_family)
 		{
 		case AF_INET:
+		{
 			ret = setsockopt(fd, IPPROTO_IP, IP_TOS, &tos, sizeof(tos));
 			__LOG(debug, "set socket option return : " << ret);
-			break;
+		}
+		break;
 		case AF_INET6:
+		{
 			ret = setsockopt(fd, IPPROTO_IPV6, IPV6_TCLASS, &tos, sizeof(tos));
-			break;
+		}
+		break;
 		default:
 			return -1;
 		}
