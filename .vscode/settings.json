@@ -39,6 +39,7 @@
         "tuple": "cpp",
         "typeinfo": "cpp",
         "utility": "cpp",
-        "any": "cpp"
+        "any": "cpp",
+        "functional": "cpp"
     }
 }
