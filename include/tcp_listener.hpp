@@ -10,12 +10,13 @@ class TCPListener
     }
     bool init()
     {
+        return true;
     }
     bool listen(std::string IP, std::uint16_t Port)
     {
         struct sockaddr_in serverAddr;
         memset(&serverAddr, 0, sizeof(serverAddr));
-
+        using boost::asio::ip::address;
         address addr(address::from_string(IP));
         if (addr.is_v4())
         {
@@ -33,12 +34,12 @@ class TCPListener
             return false;
         }
 
-        serverAddr.sin_port = htons(port);
+        serverAddr.sin_port = htons(Port);
 
         _eventListener.reset(evconnlistener_new_bind(_base_sptr.get(),
                                                      listenEventCallback, this,
                                                      LEV_OPT_CLOSE_ON_FREE | LEV_OPT_REUSEABLE | LEV_OPT_THREADSAFE, -1,
-                                                     (struct sockaddr *)&serverAddr, sizeof(serverAddr)));
+                                                     (struct sockaddr *)&serverAddr, sizeof(serverAddr)), evconnlistener_free);
 
         if (!_eventListener)
         {
@@ -50,22 +51,9 @@ class TCPListener
         evconnlistener_set_error_cb(_eventListener.get(), listenErrorCallback);
         return true;
     }
-    void listenErrorCallback(evconnlistener *, void *)
-    {
-        __LOG(error, "listen fail!");
-    }
-    void listenEventCallback(evconnlistener *, evutil_socket_t fd, sockaddr *remote_addr,
-                             int remote_addr_len, void *arg)
-    {
-        /*
-        in this callback function, we will dispatch fd to different worker thread.
-        */
-
-        TASK_MSG msg;
-        msg.type = TASK_MSG_TYPE::NEW_SESSION;
-        msg.body = fd;
-        loop_thread_pool::instance()->get_loop()->send2loop_thread(msg);
-    }
+    static void listenErrorCallback(evconnlistener *, void *);
+    static void listenEventCallback(evconnlistener *, evutil_socket_t fd, sockaddr *remote_addr,
+                                    int remote_addr_len, void *arg);
     ListenerSPtr _eventListener;
     BaseSPtr _base_sptr;
 };

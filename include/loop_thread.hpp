@@ -7,11 +7,11 @@
 #include "eventfd_client.hpp"
 #include "eventfd_server.hpp"
 #include "tcp_session.hpp"
-
+#include "tcpClient.h"
 class loop_thread : public std::enable_shared_from_this<loop_thread>
 {
   public:
-    loop_thread() : _loop_sptr(nullptr)
+    loop_thread()
     {
         _evfd = 0;
     }
@@ -66,4 +66,5 @@ class loop_thread : public std::enable_shared_from_this<loop_thread>
 
     static thread_local std::shared_ptr<loop_thread> _loop_thread_sptr;
     static thread_local std::map<evutil_socket_t, std::shared_ptr<TcpSession>> _fd_to_session_map;
+    static thread_local std::vector<std::shared_ptr<TcpClient>> _connection_sptr_vector;
 };

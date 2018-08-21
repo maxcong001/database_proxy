@@ -1,6 +1,6 @@
 #include "tcp_socket.hpp"
 #include <event2/buffer.h>
-
+#include"tcp_session.hpp"
 TcpSocket::TcpSocket() : _bev_sptr(NULL),
                          _isClosing(false)
 {
@@ -57,6 +57,7 @@ uint32_t TcpSocket::getInputBufferLength() const
 
 const uint8_t *TcpSocket::viewInputBuffer(uint32_t size) const
 {
+    // should check using evbuffer_get_contiguous_space?
     return (_bev_sptr) ? evbuffer_pullup(INPUT_BUFFER, size) : NULL;
 }
 
@@ -91,6 +92,6 @@ void TcpSocket::closeImpl()
 {
     _isClosing = false;
     clearInputBuffer();
-    bufferevent_disable(_bev.get(), EV_WRITE);
+    bufferevent_disable(_bev_sptr.get(), EV_WRITE);
     shutdown(get_socket(), 2);
 }

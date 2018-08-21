@@ -1,9 +1,6 @@
 #pragma once
 #include "util.hpp"
 
-#define INPUT_BUFFER bufferevent_get_input(_bev_sptr.get())
-#define OUTPUT_BUFFER bufferevent_get_output(_bev_sptr.get())
-
 class TcpSession : public std::enable_shared_from_this<TcpSession>
 {
   public:
@@ -81,6 +78,11 @@ class TcpSession : public std::enable_shared_from_this<TcpSession>
 		}
 	}
 	*/
+
+	bool drainInputBuffer(uint32_t len)
+	{
+		return (!_bev_sptr) ? (-1 != evbuffer_drain(INPUT_BUFFER, len)) : false;
+	}
 
 	uint32_t getInputBufferLength() const
 	{

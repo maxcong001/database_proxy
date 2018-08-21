@@ -5,6 +5,7 @@
 #include <thread>
 #include <chrono>
 #include "util.hpp"
+#include "loop_thread.hpp"
 class loop_thread_pool
 {
   public:
@@ -23,11 +24,11 @@ class loop_thread_pool
 
     bool init()
     {
-
         for (unsigned int i = 0; i < _loop_num; i++)
         {
             std::shared_ptr<loop_thread> tmp_loop_thread(new loop_thread());
-            _loops.emplace_back([&]() {
+            add_loop(tmp_loop_thread);
+            _threads.emplace_back([=]() {
                 __LOG(debug, "new loop thread with ID : " << std::this_thread::get_id());
                 if (!tmp_loop_thread->init(false))
                 {
@@ -38,11 +39,22 @@ class loop_thread_pool
                     loop_thread::_loop_thread_sptr = tmp_loop_thread;
                 }
             });
-            // make sure loop is running
-            while (tmp_loop_thread->get_loop()->status() != Loop::StatusRunning)
+        }
+        for (auto it : _loops)
+        {
+            while (1)
             {
-                __LOG(warn, "loop thread is not ready!");
-                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                if (!it->get_loop())
+                {
+                    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                    continue;
+                }
+                if (it->get_loop()->status() != Loop::StatusRunning)
+                {
+                    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                    continue;
+                }
+                break;
             }
         }
 
@@ -58,9 +70,9 @@ class loop_thread_pool
 
             it->send2loop_thread(msg);
         }
-        for (std::thread &loop : _loops)
+        for (std::thread &_thread : _threads)
         {
-            loop.join();
+            _thread.join();
         }
         return true;
     }
@@ -73,13 +85,18 @@ class loop_thread_pool
         return true;
     }
     std::shared_ptr<loop_thread> get_loop()
-    {
+    { // to do : add lock
         _select_index++;
         std::uint32_t tmp_index = _select_index % _loop_num;
         return _loops[tmp_index];
     }
-
-    std::vector<std::thread> _loops;
+    void add_loop(std::shared_ptr<loop_thread> loop_sptr)
+    {
+        // to do : add lock
+        _loops.push_back(loop_sptr);
+    }
+    std::vector<std::shared_ptr<loop_thread>> _loops;
+    std::vector<std::thread> _threads;
     std::vector<std::shared_ptr<loop_thread>> _loop_threads;
     unsigned int _loop_num;
     std::uint32_t _select_index;

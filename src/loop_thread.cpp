@@ -1,29 +1,8 @@
 #include "loop_thread.hpp"
-
-#include "tcpClient.h"
+#include "tcp_listener.hpp"
 thread_local std::shared_ptr<loop_thread> loop_thread::_loop_thread_sptr;
 thread_local std::map<evutil_socket_t, std::shared_ptr<TcpSession>> loop_thread::_fd_to_session_map;
 thread_local std::vector<std::shared_ptr<TcpClient>> loop_thread::_connection_sptr_vector;
-
-void connectCallback(const redisAsyncContext *c, int status)
-{
-    if (status != REDIS_OK)
-    {
-        printf("Error: %s\n", c->errstr);
-        return;
-    }
-    printf("Connected...\n");
-}
-
-void disconnectCallback(const redisAsyncContext *c, int status)
-{
-    if (status != REDIS_OK)
-    {
-        printf("Error: %s\n", c->errstr);
-        return;
-    }
-    printf("Disconnected...\n");
-}
 
 void loop_thread::process_msg(uint64_t num)
 {
@@ -59,7 +38,7 @@ void loop_thread::process_msg(uint64_t num)
                 continue;
             }
 
-            std::shared_ptr<TcpSession> _session_sptr(socket_fd, _loop_sptr->get_base_sptr());
+            std::shared_ptr<TcpSession> _session_sptr(new TcpSession(socket_fd, _loop_sptr->get_base_sptr()));
             loop_thread::_fd_to_session_map[socket_fd] = _session_sptr;
         }
         break;
@@ -77,7 +56,7 @@ void loop_thread::process_msg(uint64_t num)
                 continue;
             }
             // just add it, will add some more code to del function
-            auto listener_ptr = new TCPListener(_loop_sptr->get_base_sptr());
+            TCPListener* listener_ptr = new TCPListener(_loop_sptr->get_base_sptr());
             listener_ptr->listen(conn.IP, conn.type);
         }
         break;
@@ -117,13 +96,13 @@ void loop_thread::process_msg(uint64_t num)
             }
             if (_conn_info.type == CONN_TYPE::IP_V4 || _conn_info.type == CONN_TYPE::IP_V6)
             {
-                std::shared_ptr<TcpClient> _conn_sptr(get_loop());
+                std::shared_ptr<TcpClient> _conn_sptr(new TcpClient(get_loop()));
                 _conn_sptr->connect(_conn_info);
                 loop_thread::_connection_sptr_vector.push_back(_conn_sptr);
             }
             else if (_conn_info.type == CONN_TYPE::UNIX_SOCKET)
             {
-                std::shared_ptr<TcpClient> _conn_sptr(get_loop());
+                std::shared_ptr<TcpClient> _conn_sptr(new TcpClient(get_loop()));
                 _conn_sptr->connect(_conn_info);
                 loop_thread::_connection_sptr_vector.push_back(_conn_sptr);
             }
@@ -192,10 +171,10 @@ bool loop_thread::init(bool new_thread)
 
     try
     {
-        auto this_sptr = std::shared_from_this();
+        std::shared_ptr<loop_thread> this_sptr = shared_from_this();
         _event_server_sptr = std::make_shared<EventFdServer>(_loop_sptr->ev(), _evfd, [this_sptr](int fd, short event, void *args) {
             uint64_t one;
-            auto keep_this_sptr = this_sptr;
+            std::shared_ptr<loop_thread> keep_this_sptr = this_sptr;
             int ret = read(fd, &one, sizeof one);
             if (ret != sizeof one)
             {

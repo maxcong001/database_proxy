@@ -1,26 +1,29 @@
 #include "tcp_session.hpp"
 #include "loop_thread.hpp"
+
+#include "resp_parser.hpp"
 void TcpSession::onRead()
 {
     uint32_t length = this->getInputBufferLength();
     const uint8_t *buf = this->viewInputBuffer(length);
-    auto ret = rasp_parser::process_resp(buf, length, [this](char *buf, size_t buf_length) {
+    auto ret = rasp_parser::process_resp((char *)(const_cast<uint8_t *>(buf)), length, [this](char *buf, size_t buf_length) {
         std::shared_ptr<TcpClient> _conn_sptr = nullptr;
         unsigned short retry_time = loop_thread::_connection_sptr_vector.size();
-        while (!_conn_sptr = loop_thread::_connection_sptr_vector[_sIdGenerater++ / loop_thread::_connection_sptr_vector.size()] || !_conn_sptr->isConnected())
+        retry_time++;
+        do
         {
             retry_time--;
-            if (!retry_time)
+            _conn_sptr = loop_thread::_connection_sptr_vector[_sIdGenerater++ / loop_thread::_connection_sptr_vector.size()];
+            if (!_conn_sptr || !_conn_sptr->isConnected())
             {
-                __LOG(warn, "there is no connection!");
-                return;
+                continue;
             }
-        }
-        // now got a connected connection
-        if (!_conn_sptr->send(buf, buf_length))
-        {
-            __LOG(error, "send return fail");
-        }
+            // now got a connected connection
+            if (!_conn_sptr->send(buf, buf_length))
+            {
+                __LOG(error, "send return fail");
+            }
+        } while (retry_time);
     });
 
     if (std::get<0>(ret) > 0 && !this->drainInputBuffer(std::get<0>(ret)))
@@ -29,7 +32,7 @@ void TcpSession::onRead()
         return;
     }
 }
-void TcpSession : handleEvent(short events)
+void TcpSession::handleEvent(short events)
 {
     //bufferevent_disable(_bev_sptr.get(), EV_READ | EV_WRITE);
     //evutil_closesocket(get_fd());

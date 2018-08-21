@@ -1,3 +1,4 @@
+#pragma once
 /*
  * Copyright (c) 2016-20017 Max Cong <savagecm@qq.com>
  * Redistribution and use in source and binary forms, with or without
@@ -23,13 +24,14 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#pragma once
+
 
 #include "tcp_socket.hpp"
 #include <sys/socket.h>
 #include <sys/un.h>
-
 #include "util.hpp"
+
+#include "loop.hpp"
 
 class TcpClient : public TcpSocket
 {
@@ -88,7 +90,7 @@ class TcpClient : public TcpSocket
 			this->_bev_sptr = nullptr;
 			return false;
 		}
-		__LOG(debug, "[_connect]buffer_event is : " << (void *)(this->_bev_sptr.get() << ", this is : " << (void *)this);
+		__LOG(debug, "[_connect]buffer_event is : " << (void *)(this->_bev_sptr.get()) << ", this is : " << (void *)this);
 		if (-1 == bufferevent_socket_connect(this->_bev_sptr.get(), (struct sockaddr *)addr, addr_len))
 		{
 			this->_bev_sptr.reset();
@@ -107,15 +109,16 @@ class TcpClient : public TcpSocket
 	{
 		_dscp = dscp;
 	}
-	void set_conn_info(conn_info info)
+
+	void set_conn_info(CONN_INFO info)
 	{
 		_conn_info = info;
 	}
-	conn_info get_conn_info()
+	CONN_INFO get_conn_info()
 	{
 		return _conn_info;
 	}
-	conn_info _conn_info;
+	CONN_INFO _conn_info;
 
 	void reconnect()
 	{
@@ -126,13 +129,13 @@ class TcpClient : public TcpSocket
 		}
 		connect(get_conn_info());
 	}
-	bool connect(conn_info _info)
+	bool connect(CONN_INFO _info)
 	{
 		set_conn_info(_info);
 
 		switch (_info.get_conn_type())
 		{
-		case conn_type::IPv4:
+		case CONN_TYPE::IP_V4:
 		{
 			int sock_fd = socket(AF_INET, SOCK_STREAM, 0);
 			if (sock_fd < 0)
@@ -159,7 +162,7 @@ class TcpClient : public TcpSocket
 			return _connect((struct sockaddr *)&serverAddr, sizeof(serverAddr), sock_fd);
 		}
 		break;
-		case conn_type::IPv6:
+		case CONN_TYPE::IP_V6:
 		{
 
 			int sock_fd = socket(AF_INET6, SOCK_STREAM, 0);
@@ -188,7 +191,7 @@ class TcpClient : public TcpSocket
 			return _connect((struct sockaddr *)&serverAddr, sizeof(serverAddr), sock_fd);
 		}
 		break;
-		case conn_type::UNIX_SOCKET:
+		case CONN_TYPE::UNIX_SOCKET:
 		{
 
 			int sock_fd = socket(AF_UNIX, SOCK_STREAM, 0);
@@ -240,7 +243,7 @@ class TcpClient : public TcpSocket
 		if (!source_addr.empty())
 		{
 			int rv = -1;
-			/* Using getaddrinfo saves us from self-determining IPv4 vs IPv6 */
+			/* Using getaddrinfo saves us from self-determining IP_V4 vs IP_V6 */
 			if ((rv = getaddrinfo(source_addr.c_str(), NULL, NULL, &bservinfo)) != 0) //&hints, &bservinfo)) != 0)
 			{
 				__LOG(error, "get addr info return fail!");
@@ -341,3 +344,4 @@ class TcpClient : public TcpSocket
 	std::atomic<bool> _isConnected;
 	unsigned int _dscp;
 };
+

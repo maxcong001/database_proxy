@@ -75,6 +75,7 @@ void Loop::stop(bool waiting)
 
 void Loop::_run()
 {
+    __LOG(debug, "not the loop is running!");
     _status = StatusRunning;
     onBeforeLoop();
     event_base_loop(_base_sptr.get(), 0);
