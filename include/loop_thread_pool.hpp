@@ -38,8 +38,10 @@ class loop_thread_pool
                 {
                     loop_thread::_loop_thread_sptr = tmp_loop_thread;
                 }
+                __LOG(debug, "exit thread with ID : " << std::this_thread::get_id());
             });
         }
+
         for (auto it : _loops)
         {
             while (1)
@@ -95,6 +97,7 @@ class loop_thread_pool
         // to do : add lock
         _loops.push_back(loop_sptr);
     }
+
     std::vector<std::shared_ptr<loop_thread>> _loops;
     std::vector<std::thread> _threads;
     std::vector<std::shared_ptr<loop_thread>> _loop_threads;

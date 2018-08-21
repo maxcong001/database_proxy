@@ -61,6 +61,7 @@ class Loop
 	 */
 	void stop(bool waiting = true);
 	static std::atomic<std::uint32_t> _sIdGenerater;
+
   protected:
 	virtual bool onBeforeStart();
 
@@ -78,8 +79,4 @@ class Loop
 	BaseSPtr _base_sptr;
 	std::shared_ptr<std::thread> _thread_sptr;
 	std::atomic<std::uint32_t> _status;
-
-
-
-
 };

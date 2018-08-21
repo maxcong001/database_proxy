@@ -6,6 +6,7 @@ thread_local std::vector<std::shared_ptr<TcpClient>> loop_thread::_connection_sp
 
 void loop_thread::process_msg(uint64_t num)
 {
+    __LOG(debug, "receive [" << num << "] message from eventfd")
     TASK_QUEUE _tmp_task_queue;
     //__LOG(debug, "task with id : " << _evfd << " receive message");
     {
@@ -44,6 +45,7 @@ void loop_thread::process_msg(uint64_t num)
         break;
         case TASK_MSG_TYPE::NEW_LISTENER:
         {
+            __LOG(debug, "now try to start a new listener");
             CONN_INFO conn;
             try
             {
@@ -56,10 +58,11 @@ void loop_thread::process_msg(uint64_t num)
                 continue;
             }
             // just add it, will add some more code to del function
-            TCPListener* listener_ptr = new TCPListener(_loop_sptr->get_base_sptr());
-            listener_ptr->listen(conn.IP, conn.type);
+            TCPListener *listener_ptr = new TCPListener(_loop_sptr->get_base_sptr());
+            listener_ptr->listen(conn.IP, conn.port);
         }
         break;
+        
         case TASK_MSG_TYPE::DEL_SESSION:
         {
             evutil_socket_t socket_fd;
@@ -148,10 +151,9 @@ bool loop_thread::init(bool new_thread)
         __LOG(error, "!!!!!!!!create event fd fail!");
         return false;
     }
-    __LOG(debug, "init task with ID :" << _evfd);
+    __LOG(debug, "init task with eventfd ID :" << _evfd);
     // start eventfd server
     event_base *_event_base = NULL;
-
     _event_base = _loop_sptr->ev();
     // check event base is ready, if not ready sleep 10ms
     // at some rainy-day case, event base maybe NULL
@@ -172,31 +174,38 @@ bool loop_thread::init(bool new_thread)
     try
     {
         std::shared_ptr<loop_thread> this_sptr = shared_from_this();
-        _event_server_sptr = std::make_shared<EventFdServer>(_loop_sptr->ev(), _evfd, [this_sptr](int fd, short event, void *args) {
-            uint64_t one;
-            std::shared_ptr<loop_thread> keep_this_sptr = this_sptr;
-            int ret = read(fd, &one, sizeof one);
-            if (ret != sizeof one)
-            {
-                __LOG(warn, "read return : " << ret);
-                return;
-            }
-            if (keep_this_sptr)
-            {
-                keep_this_sptr->process_msg(one);
-            }
-            else
-            {
-                __LOG(error, "this has been deleted");
-            }
-        },
-                                                             this);
+        //using namespace std::placeholders;
+        //std::function<void(evutil_socket_t, short, void *)> evcb_function = std::bind(&loop_thread::evfc_cb, this, _1, _2, _3);
+
+        _event_server_sptr = std::make_shared<EventFdServer>(_loop_sptr->ev(), _evfd, evfc_cb, this);
+        _event_server_sptr->init();
     }
     catch (std::exception &e)
     {
         __LOG(error, "!!!!!!!!!!!!exception happend when trying to create event fd server, info :" << e.what());
         return false;
     }
+    __LOG(debug, "start a new loop");
     _loop_sptr->start(new_thread);
     return true;
+}
+
+void loop_thread::evfc_cb(evutil_socket_t evfd, short event, void *arg)
+{
+    uint64_t one;
+    loop_thread *_evfd_ptr = (loop_thread *)arg;
+    int ret = read(evfd, &one, sizeof one);
+    if (ret != sizeof one)
+    {
+        __LOG(warn, "read return : " << ret);
+        return;
+    }
+    if (_evfd_ptr)
+    {
+        _evfd_ptr->process_msg(one);
+    }
+    else
+    {
+        __LOG(error, "this has been deleted");
+    }
 }

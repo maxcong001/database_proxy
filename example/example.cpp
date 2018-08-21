@@ -11,12 +11,15 @@ int main()
     CONN_INFO conn;
     conn.type = CONN_TYPE::IP_V4;
     conn.IP = "127.0.0.1";
-    conn.port = 6379;
+    conn.port = 6123;
 
     msg.body = conn;
     auto loop_threads = loop_thread_pool::instance();
     loop_threads->init();
     loop_threads->get_loop()->send2loop_thread(msg);
+
+
+
 
 
     getchar();

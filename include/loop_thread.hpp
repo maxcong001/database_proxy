@@ -56,6 +56,7 @@ class loop_thread : public std::enable_shared_from_this<loop_thread>
     {
         return _loop_sptr;
     }
+    static void evfc_cb(evutil_socket_t evfd, short event, void *arg);
 
     int _evfd;
     std::shared_ptr<Loop> _loop_sptr;

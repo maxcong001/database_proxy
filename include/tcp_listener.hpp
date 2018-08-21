@@ -14,6 +14,7 @@ class TCPListener
     }
     bool listen(std::string IP, std::uint16_t Port)
     {
+        __LOG(debug, "listen on IP: " << IP << ", port is : " << Port);
         struct sockaddr_in serverAddr;
         memset(&serverAddr, 0, sizeof(serverAddr));
         using boost::asio::ip::address;
@@ -39,7 +40,8 @@ class TCPListener
         _eventListener.reset(evconnlistener_new_bind(_base_sptr.get(),
                                                      listenEventCallback, this,
                                                      LEV_OPT_CLOSE_ON_FREE | LEV_OPT_REUSEABLE | LEV_OPT_THREADSAFE, -1,
-                                                     (struct sockaddr *)&serverAddr, sizeof(serverAddr)), evconnlistener_free);
+                                                     (struct sockaddr *)&serverAddr, sizeof(serverAddr)),
+                             evconnlistener_free);
 
         if (!_eventListener)
         {
@@ -54,6 +56,6 @@ class TCPListener
     static void listenErrorCallback(evconnlistener *, void *);
     static void listenEventCallback(evconnlistener *, evutil_socket_t fd, sockaddr *remote_addr,
                                     int remote_addr_len, void *arg);
-    ListenerSPtr _eventListener;
+    std::shared_ptr<evconnlistener> _eventListener;
     BaseSPtr _base_sptr;
 };

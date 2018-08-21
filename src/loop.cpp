@@ -64,6 +64,7 @@ void Loop::wait()
 
 void Loop::stop(bool waiting)
 {
+    __LOG(debug, "Loop::stop is called");
     if (StatusFinished == _status)
     {
         return;
@@ -73,14 +74,16 @@ void Loop::stop(bool waiting)
     onAfterStop();
 }
 
+
 void Loop::_run()
 {
-    __LOG(debug, "not the loop is running!");
+    __LOG(debug, "now the loop is running!");
     _status = StatusRunning;
     onBeforeLoop();
     event_base_loop(_base_sptr.get(), 0);
     onAfterLoop();
     _status = StatusFinished;
+    __LOG(debug, "now the loop is exiting!");
 }
 
 bool Loop::onBeforeStart()
