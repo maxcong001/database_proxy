@@ -1,12 +1,12 @@
 #include "tcp_session.hpp"
 #include "loop_thread.hpp"
-
+#include "logger.hpp"
 #include "resp_parser.hpp"
 void TcpSession::onRead()
 {
-    __LOG(debug, "now there is some message in the session");
     uint32_t length = this->getInputBufferLength();
     const uint8_t *buf = this->viewInputBuffer(length);
+    __LOG(debug, "now there is some message in the session. len is :  "<<length);
     auto ret = rasp_parser::process_resp((char *)(const_cast<uint8_t *>(buf)), length, [this](char *buf, size_t buf_length) {
         __LOG(debug, "now there is a RESP message to send");
         std::shared_ptr<TcpClient> _conn_sptr = nullptr;
@@ -26,6 +26,7 @@ void TcpSession::onRead()
                 __LOG(error, "send return fail");
             }
         } while (retry_time);
+        __LOG(warn, "send message fail after retry");
     });
 
     if (std::get<0>(ret) > 0 && !this->drainInputBuffer(std::get<0>(ret)))

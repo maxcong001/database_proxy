@@ -60,7 +60,6 @@ class TcpClient : public TcpSocket
 	{
 		if (this->_bev_sptr)
 		{
-			this->_bev_sptr.reset();
 			this->_bev_sptr = nullptr;
 		}
 		return true;
@@ -68,9 +67,10 @@ class TcpClient : public TcpSocket
 
 	bool _connect(struct sockaddr *addr, unsigned int addr_len, int fd = -1)
 	{
+		evutil_make_socket_nonblocking(fd);
 		// note: note no cross check for source IP
 		set_source_addr(get_conn_info().get_source_ip(), fd);
-#if 0 
+
 		this->_bev_sptr.reset(bufferevent_socket_new(_loop->ev(), fd,
 													 BEV_OPT_CLOSE_ON_FREE | BEV_OPT_THREADSAFE | BEV_OPT_DEFER_CALLBACKS),
 							  bufferevent_free);
@@ -80,36 +80,31 @@ class TcpClient : public TcpSocket
 			__LOG(error, "buffer event new return fail!");
 			return false;
 		}
-#endif
-		struct bufferevent *buffer_event_ptr = bufferevent_socket_new(_loop->ev(), fd,
-																	  BEV_OPT_CLOSE_ON_FREE | BEV_OPT_THREADSAFE | BEV_OPT_DEFER_CALLBACKS);
+
 		__LOG(debug, "[_connect]buffer_event is : " << (void *)(this->_bev_sptr.get()) << ", this is : " << (void *)this);
-		if (-1 == bufferevent_socket_connect(buffer_event_ptr, (struct sockaddr *)addr, addr_len))
+		if (-1 == bufferevent_socket_connect(this->_bev_sptr.get(), (struct sockaddr *)addr, addr_len))
 		{
 			__LOG(error, "bufferevent_socket_connect return fail!");
-
 			this->_bev_sptr = nullptr;
 			return false;
 		}
 
 		__LOG(debug, "[init] buffer_event is : " << (void *)(this->_bev_sptr.get()) << ", this is : " << (void *)this);
 
-		bufferevent_setcb(buffer_event_ptr, readCallback, writeCallback, eventCallback, this);
-		if (-1 == bufferevent_enable(buffer_event_ptr, EV_READ | EV_WRITE))
+		bufferevent_setcb(this->_bev_sptr.get(), readCallback, writeCallback, eventCallback, this);
+		if (-1 == bufferevent_enable(this->_bev_sptr.get(), EV_READ | EV_WRITE))
 		{
 			__LOG(error, "buffer event enable return fail");
 			this->_bev_sptr = nullptr;
 			return false;
 		}
 
-#if 0
 		int sockret = set_sockopt_tos(get_conn_info().get_dscp(), fd);
 		if (sockret != 0)
 		{
 			__LOG(error, "Failed to set IP_TOS: DSCP" << _dscp << ", fd= " << fd << ", ret" << sockret);
 		}
-#endif
-		evutil_make_socket_nonblocking(bufferevent_getfd(buffer_event_ptr));
+
 		return true;
 	}
 	void set_dscp(unsigned int dscp)
@@ -335,11 +330,20 @@ class TcpClient : public TcpSocket
 	}
 
   protected:
-	virtual void onRead(){};
+	virtual void onRead()
+	{
+		__LOG(debug, "on read");
+	};
 
-	virtual void onDisconnected(){};
+	virtual void onDisconnected()
+	{
+		__LOG(debug, "dis connected");
+	};
 
-	virtual void onConnected(int error){};
+	virtual void onConnected(int error)
+	{
+		__LOG(debug, "connected");
+	};
 
   private:
 	void handleEvent(short events);

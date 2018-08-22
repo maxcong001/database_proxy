@@ -17,8 +17,10 @@ class TcpSession : public std::enable_shared_from_this<TcpSession>
 			_bev_sptr = nullptr;
 		}
 	}
+	
 	bool init()
 	{
+		evutil_make_socket_nonblocking(_fd);
 		__LOG(debug, "now init session");
 		if (!_bev_sptr)
 		{
@@ -88,6 +90,11 @@ class TcpSession : public std::enable_shared_from_this<TcpSession>
 
 	uint32_t getInputBufferLength() const
 	{
+		__LOG(debug, "");
+		if (!_bev_sptr)
+		{
+			__LOG(error, "buffer event is not valid");
+		}
 		return (!_bev_sptr) ? evbuffer_get_length(INPUT_BUFFER) : 0;
 	}
 	/** view input buffer */

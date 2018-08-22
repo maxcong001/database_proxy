@@ -39,8 +39,9 @@ void loop_thread::process_msg(uint64_t num)
                 __LOG(error, "!!!!!!!!!!!!exception happend when trying to cast message, info :" << e.what());
                 continue;
             }
-
+            evutil_make_socket_nonblocking(socket_fd);
             std::shared_ptr<TcpSession> _session_sptr(new TcpSession(socket_fd, _loop_sptr->get_base_sptr()));
+            _session_sptr->init();
             loop_thread::_fd_to_session_map[socket_fd] = _session_sptr;
         }
         break;

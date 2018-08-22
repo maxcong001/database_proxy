@@ -1,6 +1,6 @@
 #include "tcp_socket.hpp"
 #include <event2/buffer.h>
-#include"tcp_session.hpp"
+#include "tcp_session.hpp"
 TcpSocket::TcpSocket() : _bev_sptr(NULL),
                          _isClosing(false)
 {
@@ -50,8 +50,14 @@ void TcpSocket::close(bool waiting)
     closeImpl();
 }
 
+
 uint32_t TcpSocket::getInputBufferLength() const
 {
+    __LOG(debug, "");
+    if (!_bev_sptr)
+    {
+        __LOG(error, "buffer event is not valid");
+    }
     return (_bev_sptr) ? evbuffer_get_length(INPUT_BUFFER) : 0;
 }
 

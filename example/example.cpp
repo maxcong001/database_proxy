@@ -36,9 +36,16 @@ int main()
     _test_client.connect(conn);
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
     getchar();
-    __LOG(warn, "now send to listener");
+    std::string test_str("aaaaaa");
+    __LOG(warn, "now send to listener with size :" << test_str.size());
     // just for test. should not send in this thread
-    std::string test_str("+PING\r\n");
+
+    _test_client.send(test_str.c_str(), test_str.size());
+    getchar();
+    _test_client.send(test_str.c_str(), test_str.size());
+    getchar();
+    _test_client.send(test_str.c_str(), test_str.size());
+    getchar();
     _test_client.send(test_str.c_str(), test_str.size());
     getchar();
 }

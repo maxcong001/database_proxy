@@ -10,7 +10,7 @@ void TCPListener::listenEventCallback(evconnlistener *, evutil_socket_t fd, sock
     /*
         in this callback function, we will dispatch fd to different worker thread.
         */
-    __LOG(debug, "there is a now connection with fd : " << fd);
+    __LOG(debug, "there is a new connection with fd : " << fd);
     TASK_MSG msg;
     msg.type = TASK_MSG_TYPE::NEW_SESSION;
     msg.body = fd;
