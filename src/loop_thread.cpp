@@ -27,6 +27,7 @@ void loop_thread::process_msg(uint64_t num)
         {
         case TASK_MSG_TYPE::NEW_SESSION:
         {
+            __LOG(debug, "now try to add a new session");
             evutil_socket_t socket_fd;
             try
             {
@@ -62,7 +63,7 @@ void loop_thread::process_msg(uint64_t num)
             listener_ptr->listen(conn.IP, conn.port);
         }
         break;
-        
+
         case TASK_MSG_TYPE::DEL_SESSION:
         {
             evutil_socket_t socket_fd;
@@ -97,9 +98,11 @@ void loop_thread::process_msg(uint64_t num)
                 __LOG(error, "!!!!!!!!!!!!exception happend when trying to cast message, info :" << e.what());
                 continue;
             }
+            __LOG(debug, "now add a new connection, IP : " << _conn_info.IP << ", port is :" << _conn_info.port);
             if (_conn_info.type == CONN_TYPE::IP_V4 || _conn_info.type == CONN_TYPE::IP_V6)
             {
                 std::shared_ptr<TcpClient> _conn_sptr(new TcpClient(get_loop()));
+                _conn_sptr->init();
                 _conn_sptr->connect(_conn_info);
                 loop_thread::_connection_sptr_vector.push_back(_conn_sptr);
             }
@@ -107,6 +110,7 @@ void loop_thread::process_msg(uint64_t num)
             {
                 std::shared_ptr<TcpClient> _conn_sptr(new TcpClient(get_loop()));
                 _conn_sptr->connect(_conn_info);
+                _conn_sptr->init();
                 loop_thread::_connection_sptr_vector.push_back(_conn_sptr);
             }
             else
@@ -173,7 +177,7 @@ bool loop_thread::init(bool new_thread)
 
     try
     {
-        std::shared_ptr<loop_thread> this_sptr = shared_from_this();
+        //std::shared_ptr<loop_thread> this_sptr = shared_from_this();
         //using namespace std::placeholders;
         //std::function<void(evutil_socket_t, short, void *)> evcb_function = std::bind(&loop_thread::evfc_cb, this, _1, _2, _3);
 

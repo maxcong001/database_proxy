@@ -24,8 +24,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-
-
 #include "tcp_socket.hpp"
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -47,8 +45,8 @@ class TcpClient : public TcpSocket
 		__LOG(debug, "[TcpClient::init], this is : " << (void *)this);
 		if (this->_bev_sptr)
 		{
-			this->_bev_sptr.reset();
-			this->_bev_sptr = nullptr;
+			__LOG(error, "event base is not ready");
+			return false;
 		}
 		_dscp = 0;
 		return true;
@@ -68,41 +66,50 @@ class TcpClient : public TcpSocket
 		return true;
 	}
 
-	//bool connect(const char *ip, uint16_t port);
 	bool _connect(struct sockaddr *addr, unsigned int addr_len, int fd = -1)
 	{
 		// note: note no cross check for source IP
 		set_source_addr(get_conn_info().get_source_ip(), fd);
-
+#if 0 
 		this->_bev_sptr.reset(bufferevent_socket_new(_loop->ev(), fd,
-														  BEV_OPT_CLOSE_ON_FREE | BEV_OPT_THREADSAFE | BEV_OPT_DEFER_CALLBACKS));
+													 BEV_OPT_CLOSE_ON_FREE | BEV_OPT_THREADSAFE | BEV_OPT_DEFER_CALLBACKS),
+							  bufferevent_free);
+
 		if (!this->_bev_sptr)
 		{
 			__LOG(error, "buffer event new return fail!");
 			return false;
 		}
+#endif
+		struct bufferevent *buffer_event_ptr = bufferevent_socket_new(_loop->ev(), fd,
+																	  BEV_OPT_CLOSE_ON_FREE | BEV_OPT_THREADSAFE | BEV_OPT_DEFER_CALLBACKS);
+		__LOG(debug, "[_connect]buffer_event is : " << (void *)(this->_bev_sptr.get()) << ", this is : " << (void *)this);
+		if (-1 == bufferevent_socket_connect(buffer_event_ptr, (struct sockaddr *)addr, addr_len))
+		{
+			__LOG(error, "bufferevent_socket_connect return fail!");
+
+			this->_bev_sptr = nullptr;
+			return false;
+		}
+
 		__LOG(debug, "[init] buffer_event is : " << (void *)(this->_bev_sptr.get()) << ", this is : " << (void *)this);
 
-		bufferevent_setcb(this->_bev_sptr.get(), readCallback, writeCallback, eventCallback, this);
-		if (-1 == bufferevent_enable(this->_bev_sptr.get(), EV_READ | EV_WRITE))
+		bufferevent_setcb(buffer_event_ptr, readCallback, writeCallback, eventCallback, this);
+		if (-1 == bufferevent_enable(buffer_event_ptr, EV_READ | EV_WRITE))
 		{
-			this->_bev_sptr.reset();
+			__LOG(error, "buffer event enable return fail");
 			this->_bev_sptr = nullptr;
 			return false;
 		}
-		__LOG(debug, "[_connect]buffer_event is : " << (void *)(this->_bev_sptr.get()) << ", this is : " << (void *)this);
-		if (-1 == bufferevent_socket_connect(this->_bev_sptr.get(), (struct sockaddr *)addr, addr_len))
-		{
-			this->_bev_sptr.reset();
-			this->_bev_sptr = nullptr;
-			return false;
-		}
+
+#if 0
 		int sockret = set_sockopt_tos(get_conn_info().get_dscp(), fd);
 		if (sockret != 0)
 		{
 			__LOG(error, "Failed to set IP_TOS: DSCP" << _dscp << ", fd= " << fd << ", ret" << sockret);
 		}
-		evutil_make_socket_nonblocking(get_socket());
+#endif
+		evutil_make_socket_nonblocking(bufferevent_getfd(buffer_event_ptr));
 		return true;
 	}
 	void set_dscp(unsigned int dscp)
@@ -138,6 +145,7 @@ class TcpClient : public TcpSocket
 		case CONN_TYPE::IP_V4:
 		{
 			int sock_fd = socket(AF_INET, SOCK_STREAM, 0);
+			__LOG(debug, "connect IPv4 using socket fd : " << sock_fd);
 			if (sock_fd < 0)
 			{
 				__LOG(error, " create a socket fd return fail");
@@ -166,6 +174,7 @@ class TcpClient : public TcpSocket
 		{
 
 			int sock_fd = socket(AF_INET6, SOCK_STREAM, 0);
+			__LOG(debug, "connect IPv6 using socket fd : " << sock_fd);
 			if (sock_fd < 0)
 			{
 				__LOG(error, " create a socket fd return fail");
@@ -193,8 +202,8 @@ class TcpClient : public TcpSocket
 		break;
 		case CONN_TYPE::UNIX_SOCKET:
 		{
-
 			int sock_fd = socket(AF_UNIX, SOCK_STREAM, 0);
+			__LOG(debug, "connect using unix socket fd : " << sock_fd);
 			if (sock_fd < 0)
 			{
 				__LOG(error, " create a socket fd return fail");
@@ -344,4 +353,3 @@ class TcpClient : public TcpSocket
 	std::atomic<bool> _isConnected;
 	unsigned int _dscp;
 };
-

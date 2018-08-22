@@ -76,8 +76,11 @@ class TcpSocket
 	void closeImpl();
 
   protected:
-	BufferEventSPtr _bev_sptr;
+	std::shared_ptr<bufferevent> _bev_sptr;
 
   private:
 	std::atomic<bool> _isClosing;
 };
+
+
+

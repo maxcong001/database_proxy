@@ -13,12 +13,13 @@ class TcpSession : public std::enable_shared_from_this<TcpSession>
 	{
 		if (!_bev_sptr)
 		{
-			bufferevent_free(_bev_sptr.get());
+			//bufferevent_free(_bev_sptr.get());
 			_bev_sptr = nullptr;
 		}
 	}
 	bool init()
 	{
+		__LOG(debug, "now init session");
 		if (!_bev_sptr)
 		{
 			__LOG(error, "init fail! evbuffer is not valid!");
@@ -27,7 +28,8 @@ class TcpSession : public std::enable_shared_from_this<TcpSession>
 		bufferevent_setcb(_bev_sptr.get(), readCallback, writeCallback, eventCallback, this);
 		if (-1 == bufferevent_enable(_bev_sptr.get(), EV_READ | EV_WRITE))
 		{
-			bufferevent_free(_bev_sptr.get());
+			__LOG(warn, "enable buffer event return fail");
+			//bufferevent_free(_bev_sptr.get());
 			_bev_sptr = nullptr;
 			return false;
 		}
