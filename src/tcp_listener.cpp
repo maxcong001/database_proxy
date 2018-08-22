@@ -1,5 +1,7 @@
 #include "tcp_listener.hpp"
 #include "loop_thread_pool.hpp"
+
+
 void TCPListener::listenErrorCallback(evconnlistener *, void *)
 {
     __LOG(error, "listen fail!");
@@ -7,6 +9,7 @@ void TCPListener::listenErrorCallback(evconnlistener *, void *)
 void TCPListener::listenEventCallback(evconnlistener *, evutil_socket_t fd, sockaddr *remote_addr,
                                       int remote_addr_len, void *arg)
 {
+    evutil_make_socket_nonblocking(fd);
     /*
         in this callback function, we will dispatch fd to different worker thread.
         */

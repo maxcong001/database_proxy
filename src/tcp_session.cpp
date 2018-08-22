@@ -5,8 +5,15 @@
 void TcpSession::onRead()
 {
     uint32_t length = this->getInputBufferLength();
+    __LOG(debug, "now there is some message in the session. len is :  " << length);
+    if (length <= 0)
+    {
+        __LOG(debug, "read : " << length << " byte");
+        return;
+    }
+
     const uint8_t *buf = this->viewInputBuffer(length);
-    __LOG(debug, "now there is some message in the session. len is :  "<<length);
+
     auto ret = rasp_parser::process_resp((char *)(const_cast<uint8_t *>(buf)), length, [this](char *buf, size_t buf_length) {
         __LOG(debug, "now there is a RESP message to send");
         std::shared_ptr<TcpClient> _conn_sptr = nullptr;

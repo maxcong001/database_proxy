@@ -5,9 +5,10 @@ class TcpSession : public std::enable_shared_from_this<TcpSession>
 {
   public:
 	TcpSession() = delete;
-	TcpSession(evutil_socket_t fd, BaseSPtr base_sptr) : _bev_sptr(bufferevent_socket_new(base_sptr.get(), fd, BEV_OPT_THREADSAFE | BEV_OPT_DEFER_CALLBACKS | BEV_OPT_CLOSE_ON_FREE)), _isClosing(false)
+	TcpSession(evutil_socket_t fd, BaseSPtr base_sptr) : _isClosing(false)
 	{
 		_fd = fd;
+		_base_sptr = base_sptr;
 	}
 	~TcpSession()
 	{
@@ -17,10 +18,12 @@ class TcpSession : public std::enable_shared_from_this<TcpSession>
 			_bev_sptr = nullptr;
 		}
 	}
-	
+
 	bool init()
 	{
+		__LOG(debug, "init, socket fd is : " << _fd << ", this is : " << (void *)this);
 		evutil_make_socket_nonblocking(_fd);
+		_bev_sptr.reset(bufferevent_socket_new(_base_sptr.get(), _fd, BEV_OPT_THREADSAFE | BEV_OPT_DEFER_CALLBACKS | BEV_OPT_CLOSE_ON_FREE), bufferevent_free);
 		__LOG(debug, "now init session");
 		if (!_bev_sptr)
 		{
@@ -136,6 +139,8 @@ class TcpSession : public std::enable_shared_from_this<TcpSession>
 
 	static void readCallback(struct bufferevent *bev, void *data)
 	{
+
+		__LOG(warn, "get message with bytes : " << evbuffer_get_length(bufferevent_get_input(bev)) << ", data is :" << (void *)data);
 		TcpSession *session = (TcpSession *)data;
 		session->onRead();
 	}
@@ -152,7 +157,8 @@ class TcpSession : public std::enable_shared_from_this<TcpSession>
 
   private:
 	evutil_socket_t _fd;
-	BufferEventSPtr _bev_sptr;
+	BaseSPtr _base_sptr;
+	std::shared_ptr<bufferevent> _bev_sptr;
 	std::atomic<bool> _isClosing;
 	std::uint32_t _sIdGenerater;
 };
