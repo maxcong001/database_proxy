@@ -66,6 +66,7 @@ void loop_thread::process_msg(uint64_t num)
 
         case TASK_MSG_TYPE::DEL_SESSION:
         {
+            __LOG(debug, "receive a delete session message from eventfd");
             evutil_socket_t socket_fd;
             try
             {

@@ -44,11 +44,7 @@ class TcpClient : public TcpSocket
 	bool init()
 	{
 		__LOG(debug, "[TcpClient::init], this is : " << (void *)this);
-		if (!this->_bev_sptr)
-		{
-			__LOG(error, "event base is not ready");
-			return false;
-		}
+
 		_dscp = 0;
 		return true;
 	}
