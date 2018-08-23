@@ -44,7 +44,7 @@ class TcpClient : public TcpSocket
 	bool init()
 	{
 		__LOG(debug, "[TcpClient::init], this is : " << (void *)this);
-		if (this->_bev_sptr)
+		if (!this->_bev_sptr)
 		{
 			__LOG(error, "event base is not ready");
 			return false;
@@ -68,6 +68,11 @@ class TcpClient : public TcpSocket
 
 	bool _connect(struct sockaddr *addr, unsigned int addr_len, int fd = -1)
 	{
+		if (fd < 0)
+		{
+			__LOG(error, " fd is not valid");
+			return false;
+		}
 		evutil_make_socket_nonblocking(fd);
 		// note: note no cross check for source IP
 		set_source_addr(get_conn_info().get_source_ip(), fd);
@@ -127,7 +132,6 @@ class TcpClient : public TcpSocket
 	{
 		if (this->_bev_sptr)
 		{
-			this->_bev_sptr.reset();
 			this->_bev_sptr = nullptr;
 		}
 		connect(get_conn_info());
@@ -135,7 +139,6 @@ class TcpClient : public TcpSocket
 	bool connect(CONN_INFO _info)
 	{
 		set_conn_info(_info);
-
 		switch (_info.get_conn_type())
 		{
 		case CONN_TYPE::IP_V4:
@@ -176,7 +179,6 @@ class TcpClient : public TcpSocket
 				__LOG(error, " create a socket fd return fail");
 				return false;
 			}
-
 			uint16_t port = 0;
 			try
 			{
@@ -330,7 +332,6 @@ class TcpClient : public TcpSocket
 		return _loop;
 	}
 
-
 	virtual void onRead()
 	{
 		uint32_t length = this->getInputBufferLength();
@@ -352,7 +353,6 @@ class TcpClient : public TcpSocket
 
 		auto ret = rasp_parser::process_resp((char *)(const_cast<uint8_t *>(buf)), length, [this](char *buf, size_t buf_length) {
 			__LOG(debug, "now there is a RESP message for TCP client");
-
 		});
 
 		if (std::get<0>(ret) > 0 && !this->drainInputBuffer(std::get<0>(ret)))
