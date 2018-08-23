@@ -7,10 +7,26 @@ The term "Microservice Architecture" has sprung up over the last few years to de
 3. when there is some change of database(for example sharding), each service should change accordingly.
 4. if each service has connection to database, it is hard to collect over-all database info, such as now many database operation, database traffic, database connection....
 
-canal is a database proxy which provide a proxy function to database. canal acccept connection and dispatch the incoming traffic to database.
+canal is a database proxy which provide a proxy function for database. canal acccept connection and dispatch the incoming traffic to database.
 
 Canal has the following feature:
-1. 
+1. fully async.
+2. thread pool for connection.
+3. service discovery module
+4. heartbeat module
+5. connection management
+6. session affinity
+7. DB op performance count
+8. Alarm
+9. timer module
+10. traffic dispatcher module
+11. ...
 
 
-## why is canal needed:
+
+
+## road map
+
+Now in development mode.
+
+Develop for Demo. Will re-write for module programming.

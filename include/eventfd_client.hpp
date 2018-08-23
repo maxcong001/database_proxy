@@ -2,6 +2,7 @@
 #include "logger.hpp"
 #include <unistd.h>
 #include <sys/eventfd.h>
+#include "util.hpp"
 /**
  * @brief EventFdClient base 
  */

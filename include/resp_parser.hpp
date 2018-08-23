@@ -3,7 +3,8 @@
 #include <map>
 #include <functional>
 #include <algorithm>
-#include "logger/logger.hpp"
+#include "logger.hpp"
+#include "util.hpp"
 enum ParseResult
 {
     Completed,
