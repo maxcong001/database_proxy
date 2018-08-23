@@ -21,7 +21,7 @@ class loop_thread_pool
     }
     static loop_thread_pool *instance()
     {
-        static loop_thread_pool *ins = new loop_thread_pool(1); //(std::thread::hardware_concurrency() > 1 ? std::thread::hardware_concurrency() - 1 : 1));
+        static loop_thread_pool *ins = new loop_thread_pool((std::thread::hardware_concurrency() > 1 ? std::thread::hardware_concurrency() - 1 : 1));
         return ins;
     }
 
