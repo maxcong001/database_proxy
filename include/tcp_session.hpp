@@ -104,10 +104,12 @@ class TcpSession : public std::enable_shared_from_this<TcpSession>
 
 		_session->onRead();
 	}
+
 	static void writeCallback(struct bufferevent *bev, void *data)
 	{
 		//TcpSession *session = (TcpSession *)data;
 	}
+	
 	static void eventCallback(struct bufferevent *bev, short events, void *data)
 	{
 		TcpSession *session = (TcpSession *)data;

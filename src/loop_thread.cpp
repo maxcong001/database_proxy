@@ -83,6 +83,7 @@ void loop_thread::process_msg(uint64_t num)
         break;
         case TASK_MSG_TYPE::EXIT_LOOP:
         {
+            __LOG(debug, "receive a message to exit the loop");
             stop();
         }
         break;
