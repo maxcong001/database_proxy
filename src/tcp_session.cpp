@@ -2,6 +2,7 @@
 #include "loop_thread.hpp"
 #include "logger.hpp"
 #include "resp_parser.hpp"
+extern thread_local std::shared_ptr<loop_thread> _loop_thread_sptr;
 void TcpSession::onRead()
 {
     uint32_t length = this->getInputBufferLength();
@@ -13,25 +14,48 @@ void TcpSession::onRead()
     }
 
     const uint8_t *buf = this->viewInputBuffer(length);
+    if (!buf)
+    {
+        __LOG(debug, "buf is not valid, ptr is : " << (void *)buf);
+        return;
+    }
+
+    __LOG(debug, "data in the buf is : " << std::string((char *)(const_cast<uint8_t *>(buf)), length));
 
     auto ret = rasp_parser::process_resp((char *)(const_cast<uint8_t *>(buf)), length, [this](char *buf, size_t buf_length) {
         __LOG(debug, "now there is a RESP message to send");
-        std::shared_ptr<TcpClient> _conn_sptr = nullptr;
-        unsigned short retry_time = loop_thread::_connection_sptr_vector.size();
+        //std::shared_ptr<TcpClient> _conn_sptr = nullptr;
+        if (!_loop_thread_sptr || _loop_thread_sptr->_connection_sptr_vector.empty())
+        {
+            __LOG(warn, "loop thread sptr is not valid or there is not connection in this thread!");
+            return;
+        }
+
+        __LOG(debug, "there is : " << _loop_thread_sptr->_connection_sptr_vector.size() << " connection in this thread");
+
+        unsigned short retry_time = _loop_thread_sptr->_connection_sptr_vector.size();
         retry_time++;
+
         do
         {
             retry_time--;
-            _conn_sptr = loop_thread::_connection_sptr_vector[_sIdGenerater++ / loop_thread::_connection_sptr_vector.size()];
+            std::shared_ptr<redis_tcp_client> _conn_sptr = _loop_thread_sptr->_connection_sptr_vector[_sIdGenerater++ % _loop_thread_sptr->_connection_sptr_vector.size()];
             if (!_conn_sptr || !_conn_sptr->isConnected())
             {
                 continue;
             }
             // now got a connected connection
+            __LOG(debug, "now send message to redis : " << std::string(buf, buf_length) << ", length is : " << buf_length);
             if (!_conn_sptr->send(buf, buf_length))
             {
                 __LOG(error, "send return fail");
             }
+            else
+            {
+                _conn_sptr->_session_sptr_queue.push(shared_from_this());
+                return;
+            }
+
         } while (retry_time);
         __LOG(warn, "send message fail after retry");
     });
@@ -51,9 +75,9 @@ void TcpSession::handleEvent(short events)
     msg.type = TASK_MSG_TYPE::DEL_SESSION;
     msg.body = _fd;
 
-    if (loop_thread::_loop_thread_sptr)
+    if (_loop_thread_sptr)
     {
-        loop_thread::_loop_thread_sptr->send2loop_thread(msg);
+        _loop_thread_sptr->send2loop_thread(msg);
     }
     else
     {

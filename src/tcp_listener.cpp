@@ -17,5 +17,5 @@ void TCPListener::listenEventCallback(evconnlistener *, evutil_socket_t fd, sock
     TASK_MSG msg;
     msg.type = TASK_MSG_TYPE::NEW_SESSION;
     msg.body = fd;
-    loop_thread_pool::instance()->get_loop()->send2loop_thread(msg);
+    loop_thread_pool::instance()->get_loop_thread()->send2loop_thread(msg);
 }

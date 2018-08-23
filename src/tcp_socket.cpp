@@ -1,6 +1,7 @@
 #include "tcp_socket.hpp"
 #include <event2/buffer.h>
 #include "tcp_session.hpp"
+
 TcpSocket::TcpSocket() : _bev_sptr(NULL),
                          _isClosing(false)
 {
@@ -50,44 +51,45 @@ void TcpSocket::close(bool waiting)
     closeImpl();
 }
 
-
 uint32_t TcpSocket::getInputBufferLength() const
 {
-    __LOG(debug, "");
+    
+    __LOG(warn, "_bev_sptr.get() is : " << _bev_sptr.get());
     if (!_bev_sptr)
     {
         __LOG(error, "buffer event is not valid");
     }
-    return (_bev_sptr) ? evbuffer_get_length(INPUT_BUFFER) : 0;
+
+    return (_bev_sptr) ? evbuffer_get_length(bufferevent_get_input(_bev_sptr.get())) : 0;
 }
 
 const uint8_t *TcpSocket::viewInputBuffer(uint32_t size) const
 {
     // should check using evbuffer_get_contiguous_space?
-    return (_bev_sptr) ? evbuffer_pullup(INPUT_BUFFER, size) : NULL;
+    return (_bev_sptr) ? evbuffer_pullup(bufferevent_get_input(_bev_sptr.get()), size) : NULL;
 }
 
 bool TcpSocket::readInputBuffer(uint8_t *dest, uint32_t size)
 {
-    return (_bev_sptr) ? (-1 != evbuffer_remove(INPUT_BUFFER, (void *)dest, size)) : false;
+    return (_bev_sptr) ? (-1 != evbuffer_remove(bufferevent_get_input(_bev_sptr.get()), (void *)dest, size)) : false;
 }
 
 void TcpSocket::clearInputBuffer()
 {
     if (_bev_sptr)
     {
-        evbuffer_drain(INPUT_BUFFER, UINT32_MAX);
+        evbuffer_drain(bufferevent_get_input(_bev_sptr.get()), UINT32_MAX);
     }
 }
 
 bool TcpSocket::drainInputBuffer(uint32_t len)
 {
-    return (_bev_sptr) ? (-1 != evbuffer_drain(INPUT_BUFFER, len)) : false;
+    return (_bev_sptr) ? (-1 != evbuffer_drain(bufferevent_get_input(_bev_sptr.get()), len)) : false;
 }
 
 void TcpSocket::checkClosing()
 {
-    if (_isClosing && (0 == evbuffer_get_length(OUTPUT_BUFFER)))
+    if (_isClosing && (0 == evbuffer_get_length(bufferevent_get_output(_bev_sptr.get()))))
     {
         _isClosing = false;
         closeImpl();

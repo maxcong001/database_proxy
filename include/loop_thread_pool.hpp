@@ -6,6 +6,9 @@
 #include <chrono>
 #include "util.hpp"
 #include "loop_thread.hpp"
+
+extern thread_local std::shared_ptr<loop_thread> _loop_thread_sptr;
+
 class loop_thread_pool
 {
   public:
@@ -30,19 +33,21 @@ class loop_thread_pool
             add_loop(tmp_loop_thread);
             _threads.emplace_back([=]() {
                 __LOG(debug, "new loop thread with ID : " << std::this_thread::get_id());
+                _loop_thread_sptr = tmp_loop_thread;
                 if (!tmp_loop_thread->init(false))
                 {
                     __LOG(error, "start a new loop thread fail, start one again!");
                 }
                 else
                 {
-                    loop_thread::_loop_thread_sptr = tmp_loop_thread;
+                    __LOG(error, "now set the _loop_thread_sptr");
+                    
                 }
                 __LOG(debug, "exit thread with ID : " << std::this_thread::get_id());
             });
         }
 
-        for (auto it : _loops)
+        for (auto it : _loop_threads)
         {
             while (1)
             {
@@ -86,21 +91,21 @@ class loop_thread_pool
         }
         return true;
     }
-    std::shared_ptr<loop_thread> get_loop()
+    std::shared_ptr<loop_thread> get_loop_thread()
     { // to do : add lock
         _select_index++;
         std::uint32_t tmp_index = _select_index % _loop_num;
-        return _loops[tmp_index];
+        return _loop_threads[tmp_index];
     }
     void add_loop(std::shared_ptr<loop_thread> loop_sptr)
     {
         // to do : add lock
-        _loops.push_back(loop_sptr);
+        _loop_threads.push_back(loop_sptr);
     }
 
-    std::vector<std::shared_ptr<loop_thread>> _loops;
-    std::vector<std::thread> _threads;
     std::vector<std::shared_ptr<loop_thread>> _loop_threads;
+    std::vector<std::thread> _threads;
+    
     unsigned int _loop_num;
     std::uint32_t _select_index;
 };

@@ -1,8 +1,6 @@
 #include "loop_thread.hpp"
 #include "tcp_listener.hpp"
-thread_local std::shared_ptr<loop_thread> loop_thread::_loop_thread_sptr;
-thread_local std::map<evutil_socket_t, std::shared_ptr<TcpSession>> loop_thread::_fd_to_session_map;
-thread_local std::vector<std::shared_ptr<TcpClient>> loop_thread::_connection_sptr_vector;
+thread_local std::shared_ptr<loop_thread> _loop_thread_sptr;
 
 void loop_thread::process_msg(uint64_t num)
 {
@@ -43,7 +41,7 @@ void loop_thread::process_msg(uint64_t num)
             //evutil_make_socket_nonblocking(socket_fd);
             std::shared_ptr<TcpSession> _session_sptr(new TcpSession(socket_fd, _loop_sptr->get_base_sptr()));
             _session_sptr->init();
-            loop_thread::_fd_to_session_map[socket_fd] = _session_sptr;
+            _fd_to_session_map[socket_fd] = _session_sptr;
         }
         break;
         case TASK_MSG_TYPE::NEW_LISTENER:
@@ -103,17 +101,17 @@ void loop_thread::process_msg(uint64_t num)
             __LOG(debug, "now add a new connection, IP : " << _conn_info.IP << ", port is :" << _conn_info.port);
             if (_conn_info.type == CONN_TYPE::IP_V4 || _conn_info.type == CONN_TYPE::IP_V6)
             {
-                std::shared_ptr<TcpClient> _conn_sptr(new TcpClient(get_loop()));
+                std::shared_ptr<redis_tcp_client> _conn_sptr(new redis_tcp_client(get_loop()));
                 _conn_sptr->init();
                 _conn_sptr->connect(_conn_info);
-                loop_thread::_connection_sptr_vector.push_back(_conn_sptr);
+                _connection_sptr_vector.push_back(_conn_sptr);
             }
             else if (_conn_info.type == CONN_TYPE::UNIX_SOCKET)
             {
-                std::shared_ptr<TcpClient> _conn_sptr(new TcpClient(get_loop()));
+                std::shared_ptr<redis_tcp_client> _conn_sptr(new redis_tcp_client(get_loop()));
                 _conn_sptr->connect(_conn_info);
                 _conn_sptr->init();
-                loop_thread::_connection_sptr_vector.push_back(_conn_sptr);
+                _connection_sptr_vector.push_back(_conn_sptr);
             }
             else
             {

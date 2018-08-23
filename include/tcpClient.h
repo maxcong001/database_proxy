@@ -30,6 +30,7 @@
 #include "util.hpp"
 
 #include "loop.hpp"
+#include "resp_parser.hpp"
 
 class TcpClient : public TcpSocket
 {
@@ -329,10 +330,36 @@ class TcpClient : public TcpSocket
 		return _loop;
 	}
 
-  protected:
+
 	virtual void onRead()
 	{
-		__LOG(debug, "on read");
+		uint32_t length = this->getInputBufferLength();
+
+		if (length <= 0)
+		{
+			__LOG(debug, "read : " << length << " byte");
+			return;
+		}
+
+		const uint8_t *buf = this->viewInputBuffer(length);
+		if (!buf)
+		{
+			__LOG(debug, "buf is not valid, ptr is : " << (void *)buf);
+			return;
+		}
+
+		__LOG(debug, "data in the buf is : " << std::string((char *)(const_cast<uint8_t *>(buf)), length));
+
+		auto ret = rasp_parser::process_resp((char *)(const_cast<uint8_t *>(buf)), length, [this](char *buf, size_t buf_length) {
+			__LOG(debug, "now there is a RESP message for TCP client");
+
+		});
+
+		if (std::get<0>(ret) > 0 && !this->drainInputBuffer(std::get<0>(ret)))
+		{
+			__LOG(error, "drain input buffer fail!");
+			return;
+		}
 	};
 
 	virtual void onDisconnected()

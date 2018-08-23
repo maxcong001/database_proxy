@@ -15,7 +15,7 @@ int main()
     msg.body = conn;
     auto loop_threads = loop_thread_pool::instance();
     loop_threads->init();
-    loop_threads->get_loop()->send2loop_thread(msg);
+    loop_threads->get_loop_thread()->send2loop_thread(msg);
     getchar();
     __LOG(warn, "now add a connection to redis");
     msg.type = TASK_MSG_TYPE::ADD_CONN;
@@ -24,19 +24,19 @@ int main()
     conn.port = 6379;
 
     msg.body = conn;
-    loop_threads->get_loop()->send2loop_thread(msg);
+    loop_threads->send_to_all(msg);
 
     getchar();
     __LOG(warn, "now start a new connection to listener");
     conn.type = CONN_TYPE::IP_V4;
     conn.IP = "127.0.0.1";
     conn.port = 6123;
-    TcpClient _test_client(loop_threads->get_loop()->get_loop());
+    TcpClient _test_client(loop_threads->get_loop_thread()->get_loop());
     __LOG(debug, "now connect to listener");
     _test_client.connect(conn);
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
     getchar();
-    std::string test_str("aaaaaa");
+    std::string test_str("*3\r\n$3\r\nSET\r\n$5\r\nmykey\r\n$8\r\nmy value\r\n");
     __LOG(warn, "now send to listener with size :" << test_str.size());
     // just for test. should not send in this thread
 
