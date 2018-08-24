@@ -27,18 +27,15 @@
 #include <netinet/tcp.h>
 #include "logger.hpp"
 
-
 TcpClient::TcpClient(std::shared_ptr<Loop> loop) : _loop(loop),
-															 _isConnected(false)
+												   _isConnected(false)
 {
 	_dscp = 0;
 }
 
-
 void TcpClient::handleEvent(short events)
 {
-	__LOG(warn, " handle event, error code is : " << events << ". error message is : " << evutil_socket_error_to_string(events) << ". this is : " << (void *)this);
-
+	__LOG(debug, " handle event, error code is : " << events << ". error message is : " << evutil_socket_error_to_string(events) << ". this is : " << (void *)this);
 	if (events & (BEV_EVENT_EOF | BEV_EVENT_ERROR | BEV_EVENT_TIMEOUT))
 	{
 		bufferevent_disable(_bev_sptr.get(), EV_READ | EV_WRITE);
@@ -47,12 +44,10 @@ void TcpClient::handleEvent(short events)
 		onDisconnected();
 		if (_bev_sptr)
 		{
-			_bev_sptr.reset();
+			_bev_sptr = nullptr;
 		}
-		_bev_sptr = nullptr;
 		return;
 	}
-
 	if (events & BEV_EVENT_CONNECTED)
 	{
 		int socketError = EVUTIL_SOCKET_ERROR();
@@ -62,7 +57,6 @@ void TcpClient::handleEvent(short events)
 			_isConnected = true; //.store(true, std::memory_order_release);
 			onConnected(socketError);
 		}
-
 		else
 		{
 			onConnected(socketError);
@@ -87,5 +81,3 @@ void TcpClient::eventCallback(struct bufferevent *bev, short events, void *ctx)
 	TcpClient *socket = (TcpClient *)ctx;
 	socket->handleEvent(events);
 }
-
-

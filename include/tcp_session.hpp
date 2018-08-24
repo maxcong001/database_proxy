@@ -10,11 +10,11 @@ class TcpSession : public std::enable_shared_from_this<TcpSession>
 		_fd = fd;
 		_base_sptr = base_sptr;
 	}
+
 	~TcpSession()
 	{
 		if (!_bev_sptr)
 		{
-			//bufferevent_free(_bev_sptr.get());
 			_bev_sptr = nullptr;
 		}
 	}
@@ -34,10 +34,10 @@ class TcpSession : public std::enable_shared_from_this<TcpSession>
 		if (-1 == bufferevent_enable(_bev_sptr.get(), EV_READ | EV_WRITE))
 		{
 			__LOG(warn, "enable buffer event return fail");
-			//bufferevent_free(_bev_sptr.get());
 			_bev_sptr = nullptr;
 			return false;
 		}
+		return true;
 	}
 
 	inline evutil_socket_t get_fd() const
@@ -53,38 +53,6 @@ class TcpSession : public std::enable_shared_from_this<TcpSession>
 		}
 		return (-1 != bufferevent_write(_bev_sptr.get(), data, size));
 	}
-	/*
-	void close(bool waiting = true)
-	{
-		if (!_bev_sptr)
-		{
-			return;
-		}
-
-		if (waiting && (evbuffer_get_length(OUTPUT_BUFFER) > 0))
-		{
-			_isClosing = true;
-			return;
-		}
-
-		closeImpl();
-	}
-	void closeImpl()
-	{
-		_isClosing = false;
-		clearInputBuffer();
-		bufferevent_disable(_bev_sptr, EV_WRITE);
-		shutdown(socket(), 2);
-	}
-	void checkClosing()
-	{
-		if (_isClosing && (0 == evbuffer_get_length(OUTPUT_BUFFER)))
-		{
-			_isClosing = false;
-			closeImpl();
-		}
-	}
-	*/
 
 	bool drainInputBuffer(uint32_t len)
 	{
@@ -122,19 +90,7 @@ class TcpSession : public std::enable_shared_from_this<TcpSession>
 	}
 
   protected:
-	/**
-	 * @brief 
-	 * @details cal TcpServer::onSessionRead by default. 
-	 * @see TcpServer::onSessionRead
-	 */
 	virtual void onRead();
-
-	enum ParseResult
-	{
-		Completed,
-		Incompleted,
-		Error,
-	};
 
   private:
 	void handleEvent(short events);
@@ -148,11 +104,12 @@ class TcpSession : public std::enable_shared_from_this<TcpSession>
 
 		_session->onRead();
 	}
+
 	static void writeCallback(struct bufferevent *bev, void *data)
 	{
 		//TcpSession *session = (TcpSession *)data;
-		//session->checkClosing();
 	}
+	
 	static void eventCallback(struct bufferevent *bev, short events, void *data)
 	{
 		TcpSession *session = (TcpSession *)data;
@@ -163,8 +120,6 @@ class TcpSession : public std::enable_shared_from_this<TcpSession>
 	evutil_socket_t _fd;
 	BaseSPtr _base_sptr;
 	std::shared_ptr<bufferevent> _bev_sptr;
-	std::atomic<bool> _isClosing;
+	bool _isClosing;
 	std::uint32_t _sIdGenerater;
-
 };
-typedef std::shared_ptr<TcpSession> TcpSessionSPtr;
