@@ -23,6 +23,11 @@ Canal has the following feature:
 11. ...
 
 
+## development record
+
+| time        | change                                                | version |
+|-------------|-------------------------------------------------------|---------|
+| 2018/08/20  |first commit, ready for demo                           | 0.1     |
 
 
 ## road map
