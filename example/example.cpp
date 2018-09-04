@@ -6,7 +6,7 @@
 
 int main()
 {
-    set_log_level(logger_iface::log_level::error);
+    set_log_level(logger_iface::log_level::debug);
     __LOG(warn, "now start a listener");
     TASK_MSG msg;
     msg.type = TASK_MSG_TYPE::NEW_LISTENER;
@@ -17,17 +17,17 @@ int main()
     msg.body = conn;
     auto loop_threads = loop_thread_pool::instance();
     loop_threads->init();
-    /*
-    loop_threads->get_loop_thread()->send2loop_thread(msg);
+    loop_threads->send_to_all(msg);
+
+    //loop_threads->get_loop_thread()->send2loop_thread(msg);
     getchar();
     __LOG(warn, "now add a connection to redis");
     msg.type = TASK_MSG_TYPE::ADD_CONN;
     conn.type = CONN_TYPE::IP_V4;
     conn.IP = "127.0.0.1";
     conn.port = 6379;
-
     msg.body = conn;
-    */
+
     loop_threads->send_to_all(msg);
 
     getchar();
