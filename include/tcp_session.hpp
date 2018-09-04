@@ -1,6 +1,6 @@
 #pragma once
 #include "util.hpp"
-
+#include <thread>
 class TcpSession : public std::enable_shared_from_this<TcpSession>
 {
   public:
@@ -109,7 +109,7 @@ class TcpSession : public std::enable_shared_from_this<TcpSession>
 	{
 		//TcpSession *session = (TcpSession *)data;
 	}
-	
+
 	static void eventCallback(struct bufferevent *bev, short events, void *data)
 	{
 		TcpSession *session = (TcpSession *)data;

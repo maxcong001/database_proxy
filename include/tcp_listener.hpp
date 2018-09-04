@@ -19,15 +19,18 @@ class TCPListener
         memset(&serverAddr, 0, sizeof(serverAddr));
         using boost::asio::ip::address;
         address addr(address::from_string(IP));
+        int listenfd;
         if (addr.is_v4())
         {
             serverAddr.sin_family = AF_INET;
             evutil_inet_pton(AF_INET, IP.c_str(), &serverAddr.sin_addr);
+            listenfd = socket(AF_INET, SOCK_STREAM, 0);
         }
         else if (addr.is_v6())
         {
             serverAddr.sin_family = AF_INET6;
             evutil_inet_pton(AF_INET6, IP.c_str(), &serverAddr.sin_addr);
+            listenfd = socket(AF_INET6, SOCK_STREAM, 0);
         }
         else
         {
@@ -36,11 +39,31 @@ class TCPListener
         }
 
         serverAddr.sin_port = htons(Port);
+        if (listenfd < 0)
+        {
+            __LOG(error, "get fd return fail");
+            return false;
+        }
 
-        _eventListener.reset(evconnlistener_new_bind(_base_sptr.get(),
-                                                     listenEventCallback, this,
-                                                     LEV_OPT_CLOSE_ON_FREE | LEV_OPT_REUSEABLE | LEV_OPT_THREADSAFE, -1,
-                                                     (struct sockaddr *)&serverAddr, sizeof(serverAddr)),
+        int val = 1;
+        /*set SO_REUSEPORT*/
+        if (setsockopt(listenfd, SOL_SOCKET, SO_REUSEPORT, &val, sizeof(val)) < 0)
+        {
+            __LOG(error, "setsockopt() return fail!");
+            return false;
+        }
+
+        int ret = bind(listenfd, (struct sockaddr *)&serverAddr, sizeof(serverAddr));
+        if (ret != 0)
+        {
+            __LOG(error, "bind() return fail!");
+            return false;
+        }
+
+        _eventListener.reset(evconnlistener_new(_base_sptr.get(),
+                                                listenEventCallback, this,
+                                                LEV_OPT_CLOSE_ON_FREE | LEV_OPT_REUSEABLE | LEV_OPT_THREADSAFE, -1,
+                                                listenfd),
                              evconnlistener_free);
 
         if (!_eventListener)
